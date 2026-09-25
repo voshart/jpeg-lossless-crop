@@ -1,121 +1,73 @@
 # JPEG / Lossless crop
 
-A small browser tool for cropping JPEGs without recompressing their image data.
-Plain HTML, CSS, and JavaScript modules. No framework, bundler, runtime npm
-dependencies, CDN, image upload, analytics, or external fonts.
+A browser tool for cropping JPEGs without recompressing the retained image data.
+It uses plain HTML, CSS, JavaScript modules, and a source-built `jpegtran` WASM
+engine. Images are opened from your device and processed in the browser; the
+app has no upload endpoint, analytics, external fonts, or CDN dependencies.
 
-**Current status:** the interface, header parser, crop geometry, and worker
-adapter are implemented. A source-built JPEG engine is included for deployment,
-but an actual JPEG export has not been verified end to end; see `TESTING.md`.
+> **Validation status:** The interface and unit tests are in place, but JPEG
+> export has not been verified end to end. See [TESTING.md](TESTING.md) before
+> relying on the output for important images.
 
-## Run the interface in WSL
+## Use
 
-```bash
-git clone https://github.com/voshart/jpeg-lossless-crop.git
-cd jpeg-lossless-crop
-code .
-python3 scripts/serve.py
-```
+Open a JPEG, then drag on the preview or enter X, Y, width, and height. The
+selection expands to JPEG block boundaries and is clipped to the image edges.
+The overlay and fields show the resulting crop area. Save downloads a new JPEG.
 
-Open `http://127.0.0.1:8000` in your Windows browser. The server binds only to
-loopback and serves `web/`, not the repository or build directories. Node is
-not needed to use the interface. Stop the server with Ctrl+C.
+The app accepts 8-bit baseline, extended sequential, and progressive DCT JPEGs,
+including grayscale and EXIF orientations 1–8. The limit is 50 MiB and 100
+megapixels. Invalid or unsupported files fail explicitly.
 
-You can open a JPEG, preview it, and adjust a selection. There is no
-installation command for the front end.
+By default, export keeps the ICC colour profile and discards other extra
+metadata. An option to retain original metadata may also retain GPS data or an
+uncropped thumbnail. **Cropping is not secure redaction:** metadata and partial
+edge blocks can retain sensitive information.
 
-## Build the JPEG engine
+## How it works
 
-On Ubuntu/Debian WSL, install the compiler and build tools using your distro's
-packages (or use an existing official Emscripten SDK installation):
+A Web Worker runs `jpegtran -crop` on the original JPEG bytes. There is no
+Canvas encoder, quality setting, or lossy export fallback. Each crop gets a
+fresh worker with cancellation and a 60-second timeout.
 
-```bash
-sudo apt update
-sudo apt install emscripten cmake build-essential curl python3
-bash scripts/build-wasm.sh
-python3 scripts/serve.py
-```
-
-The build script downloads **libjpeg-turbo 3.2.0 source**, checks the archive's
-SHA-256, builds its static library, and compiles the upstream `jpegtran` CLI to
-an ES module plus WASM. It does not use the demonstration application's code or
-precompiled binaries. It writes the following files into `web/vendor/`:
-
-- `jpegtran.js` and `jpegtran.wasm`
-- upstream licence notices
-- `build-info.json` containing compiler information and output hashes
-
-The pinned source archive hash is:
+The engine is built from libjpeg-turbo 3.2.0 source by
+[`scripts/build-wasm.sh`](scripts/build-wasm.sh). The script verifies the
+upstream source archive against SHA-256:
 
 ```text
 6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e
 ```
 
-Source and archive digest: the asset metadata for the
-[official 3.2.0 release](https://github.com/libjpeg-turbo/libjpeg-turbo/releases/tag/3.2.0).
-The toolchain is **not** pinned yet. This provides source provenance, not a
-claim of bit-for-bit reproducible builds or a security certification. Record
-and test your compiler version before publishing a production build.
+The committed [`web/vendor/`](web/vendor/) directory contains the generated
+JavaScript and WASM, upstream licence notices, and `build-info.json` with
+compiler and output hashes. The toolchain is not pinned, so this is source
+provenance, not a claim of reproducible builds or a security certification.
+The project does not use code or binaries from the unlicensed demonstration app.
 
-## Behaviour
+## Development
 
-Open one local JPEG. Drag on the image to draw a crop, or enter X, Y, width,
-and height. The fields describe the displayed orientation. The selection
-expands outward to JPEG block boundaries and is clipped to the source edges;
-the overlay and fields show the resulting area, not an unsnapped approximation.
+Serve `web/` locally with:
 
-The worker invokes `jpegtran -crop` on the original bytes. There is no Canvas
-encoder, quality setting, or lossy fallback. A fresh worker processes each crop,
-with cancellation and a 60-second timeout, then releases the engine and memory.
-
-The initial parser accepts 8-bit baseline/extended-sequential/progressive DCT
-JPEGs, including grayscale and EXIF orientations 1–8. Files are limited to
-50 MiB and 100 megapixels. Malformed or unsupported inputs fail explicitly.
-The browser must agree with the parsed display dimensions for a file to load.
-
-By default, `-copy icc` keeps the colour profile while discarding other extra
-markers. A minimal new EXIF orientation field is added when necessary. Keeping
-original metadata is an explicit option and can retain GPS or an uncropped
-thumbnail. Cropping is **not secure redaction**: retained edge blocks and
-metadata deserve special care for sensitive images.
-
-## Files
-
-```text
-web/index.html           Semantic interface
-web/style.css            Monochrome tokens, square controls, responsive layout
-web/src/app.js           File input, preview, selection, downloads
-web/src/jpeg.js          Bounded JPEG/EXIF header parsing
-web/src/geometry.js      Orientation transforms and block-aligned selection
-web/src/jpeg-worker.js   Source-built jpegtran adapter; no fallback
-scripts/build-wasm.sh    Pinned-source engine build
-scripts/serve.py         Local static server with security headers
+```bash
+python3 scripts/serve.py
 ```
 
-Run the dependency-free unit tests with Node 22 or newer:
+The local server sends the same security headers as the Cloudflare Pages
+[`web/_headers`](web/_headers) file. Run the dependency-free unit tests with
+Node 22 or newer:
 
 ```bash
 node --test tests/*.test.js
 ```
 
-## Styling and deployment
+To rebuild the engine, install Emscripten, CMake, a C compiler, curl, and
+Python 3, then run `bash scripts/build-wasm.sh`. Review the generated notices,
+manifest, and [test limitations](TESTING.md) before publishing a new build.
 
-The interface uses system sans-serif and monospace fonts, paper/ink colour
-tokens, thin dividers, square buttons, and automatic light/dark themes. Edit
-`web/style.css` directly. Project constraints are recorded in `AGENTS.md`.
-
-For Cloudflare Pages Git integration, select `main` as the production branch,
-no framework, no build command, and `web` as the build output directory. The
-committed engine, notices, and manifest are deployed with the interface.
-`web/_headers` applies the local server's security headers to static responses,
-including worker scripts. An HTML meta CSP alone does not cover worker responses.
-Verify an actual JPEG export before treating the site as production-ready.
-`connect-src 'self'` is a useful restriction, not an absolute guarantee of no
-network activity.
+For Cloudflare Pages Git integration, use `main` as the production branch, no
+framework or build command, and `web` as the build output directory.
 
 ## Licensing
 
-A project-wide licence has not been selected for this starter. The generated
-libjpeg-turbo/Emscripten components retain their upstream terms and notices;
-review those before redistribution. No licence from the unlicensed demo is
-being assumed or inherited.
+A project-wide licence has not been selected. The generated libjpeg-turbo and
+Emscripten components retain their upstream terms and notices in `web/vendor/`.
