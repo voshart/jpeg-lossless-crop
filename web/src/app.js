@@ -2,6 +2,7 @@ import { parseJpeg, MAX_FILE_BYTES } from './jpeg.js';
 import { snapCrop, rawToDisplay, retainedEdgeRects } from './geometry.js';
 import { createCropInteraction } from './crop-interaction.js';
 import { createPreview } from './preview.js';
+import { rotationPlan } from './rotation.js';
 
 const $ = id => document.getElementById(id);
 const fields = ['x', 'y', 'width', 'height'];
@@ -15,6 +16,7 @@ function setBusy(value) {
   busy = value;
   $('open').disabled = value;
   $('open-empty').disabled = value;
+  for (const id of ['rotate-left', 'rotate-right']) $(id).disabled = value || !source;
   $('crop-controls').disabled = value || !source;
   $('export-controls').disabled = !source;
   $('keep-metadata').disabled = value;
@@ -88,9 +90,11 @@ async function openFile(file) {
     const freeCorner = rawToDisplay({ x: info.width, y: info.height, width: 0, height: 0 }, info);
     const cornerName = `${freeCorner.y === 0 ? 'upper' : 'lower'} ${freeCorner.x === 0 ? 'left' : 'right'}`;
     status(`Hover for block placement. Drag toward ${cornerName} for pixel refinement.`);
+    return true;
   } catch (e) {
     if (url && url !== previewUrl) URL.revokeObjectURL(url);
     error(e.message); status(source ? 'Previous JPEG is still selected.' : 'No JPEG loaded.');
+    return false;
   } finally { if (sequence === loadSequence) setBusy(false); }
 }
 $('open').addEventListener('click', () => $('file').click());
@@ -151,7 +155,7 @@ $('keep-metadata').addEventListener('change', () => {
     : 'Removes EXIF, GPS, comments, and thumbnails. Keeps the ICC colour profile and display orientation.';
 });
 
-function cropInWorker(bytes, rect, keepMetadata) {
+function runJpegWorker(bytes, request, action) {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL('./jpeg-worker.js', import.meta.url), { type: 'module' });
     let done = false;
@@ -160,13 +164,13 @@ function cropInWorker(bytes, rect, keepMetadata) {
       done = true; clearTimeout(timer); worker.terminate(); pendingCancel = null;
       failure ? reject(failure) : resolve(result);
     };
-    const timer = setTimeout(() => finish(new Error('Cropping timed out after 60 seconds. Try a smaller image.')), 60_000);
-    pendingCancel = () => finish(new Error('Cropping cancelled.'));
+    const timer = setTimeout(() => finish(new Error(`${action} timed out after 60 seconds. Try a smaller image.`)), 60_000);
+    pendingCancel = () => finish(new Error(`${action} cancelled.`));
     for (const id of ['cancel', 'cancel-toolbar']) $(id).hidden = false;
     worker.onmessage = ({ data }) => data.ok ? finish(null, data) : finish(new Error(data.error));
     worker.onerror = event => { event.preventDefault(); finish(new Error('The JPEG worker failed to load or run. Check the local WASM build.')); };
     worker.onmessageerror = () => finish(new Error('The JPEG worker returned an unreadable result.'));
-    try { worker.postMessage({ bytes, crop: rect, keepMetadata }, [bytes]); }
+    try { worker.postMessage({ bytes, ...request }, [bytes]); }
     catch (e) { finish(e); }
   });
 }
@@ -177,7 +181,8 @@ async function saveCrop() {
   try { updateSelection(readCoordinates()); } catch (e) { error(e.message); return; }
   setBusy(true); status('Cropping JPEG coefficients…');
   try {
-    const result = await cropInWorker(await source.arrayBuffer(), crop.display, $('keep-metadata').checked);
+    const result = await runJpegWorker(await source.arrayBuffer(),
+      { operation: 'crop', crop: crop.display, keepMetadata: $('keep-metadata').checked }, 'Cropping');
     const blob = new Blob([result.bytes], { type: 'image/jpeg' });
     const url = URL.createObjectURL(blob); downloads.add(url);
     const anchor = document.createElement('a');
@@ -189,6 +194,30 @@ async function saveCrop() {
   } catch (e) { error(e.message); status('No JPEG was exported.'); }
   finally { setBusy(false); }
 }
+async function rotateSource(direction) {
+  if (busy || !source) return;
+  let plan;
+  try { plan = rotationPlan(info, direction); }
+  catch (e) { error(e.message); return; }
+  if (plan.trim && !window.confirm('Turning this photo will cut off a thin strip along one edge; do you want to continue?')) return;
+  error(); setBusy(true); status('Turning JPEG…');
+  try {
+    const original = source;
+    const result = await runJpegWorker(await original.arrayBuffer(),
+      { operation: 'rotate', direction }, 'Turning');
+    const rotated = new File([result.bytes], original.name, { type: 'image/jpeg' });
+    setBusy(false);
+    if (await openFile(rotated)) {
+      status(plan.trim
+        ? 'Photo turned without recompression; a thin edge strip was removed.'
+        : 'Photo turned without recompression.');
+    }
+  } catch (e) {
+    error(e.message); status('Previous JPEG is still selected.');
+  } finally { setBusy(false); }
+}
+$('rotate-left').addEventListener('click', () => rotateSource('left'));
+$('rotate-right').addEventListener('click', () => rotateSource('right'));
 // Both buttons use the same validation, metadata settings and worker path.
 for (const id of ['save', 'save-toolbar']) $(id).addEventListener('click', saveCrop);
 new ResizeObserver(fitPreview).observe($('drop-area'));

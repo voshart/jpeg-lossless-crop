@@ -27,6 +27,10 @@
         <h2>Source</h2>
         <button id="open" class="wide" type="button">Open JPEG</button>
         <input id="file" type="file" accept="image/jpeg,.jpg,.jpeg,.jpe,.jfif" hidden>
+        <div class="rotate-controls" role="group" aria-label="Turn source photo">
+          <button id="rotate-left" type="button" disabled>↶ Turn left</button>
+          <button id="rotate-right" type="button" disabled>↷ Turn right</button>
+        </div>
         <p id="file-name" class="file-name">No file selected</p>
         <dl id="file-info" hidden>
           <div><dt>Image</dt><dd id="dimensions"></dd></div>
@@ -53,7 +57,7 @@
       </fieldset>
       <details class="panel-section">
         <summary>About cropping</summary>
-        <p class="note">The JPEG engine copies retained transform coefficients without re-encoding pixels. JPEG block-start edges align; opposite edges can end on any pixel.</p>
+        <p class="note">The JPEG engine copies retained transform coefficients without re-encoding pixels. Turning may remove a thin edge strip after asking you. JPEG block-start edges align; opposite edges can end on any pixel.</p>
         <p class="note">Not a secure-redaction tool: boundary blocks can retain information outside the visible edge. Keeping original metadata can retain GPS coordinates and an uncropped thumbnail.</p>
       </details>
     </aside>

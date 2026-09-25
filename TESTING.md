@@ -20,9 +20,11 @@ CSP, module loading over HTTP, the worker, downloads, or an actual JPEG crop.
 Source-built WASM files and their build manifest are included for hosting.
 Their recorded hashes match the local files; this session has not rebuilt them.
 The committed WASM engine returned a 53 × 37 JPEG from libjpeg-turbo
-`testorig.jpg` using a 53 × 37 crop at raw offset 16,16. That verifies the
-engine can preserve a pixel-exact lower-right boundary in a direct run, but the
-browser worker and download flow remain unverified end to end. An independent
+`testorig.jpg` using a 53 × 37 crop at raw offset 16,16. Direct engine runs
+also turned the 227 × 149 fixture to 144 × 227 with a trimmed right turn and
+149 × 224 with a trimmed left turn; a 32 × 48 crop turned perfectly to 48 × 32.
+That verifies direct cropping and turning in the engine. The browser worker,
+rotation preview, and download flow remain unverified end to end. An independent
 coefficient comparison has not run. The orange retained-edge indicator has
 geometry tests, but its appearance has not been checked in a browser.
 

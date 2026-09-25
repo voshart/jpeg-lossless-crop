@@ -1,6 +1,7 @@
 # JPEG / Lossless crop
 
-A browser tool for cropping JPEGs without recompressing the retained image data.
+A browser tool for cropping and turning JPEGs without recompressing the
+retained image data.
 It uses plain HTML, CSS, JavaScript modules, and a source-built `jpegtran` WASM
 engine. Images are opened from your device and processed in the browser; the
 app has no upload endpoint, analytics, external fonts, or CDN dependencies.
@@ -16,8 +17,10 @@ placement crosshair snaps to the JPEG block grid. Drag toward the free-edge
 corner to refine the far corner by pixels; on an unrotated image, that is the
 lower-right corner. EXIF orientation can change which displayed corner is free.
 The overlay and fields show the resulting crop area. Orange marks source pixels
-retained in partial edge blocks outside the visible crop. Save downloads a new
-JPEG.
+retained in partial edge blocks outside the visible crop. The Turn left and Turn
+right buttons rotate the source before cropping and reset the selection. If
+turning requires removing a thin edge strip, the app asks before doing so. Save
+downloads a new JPEG.
 
 The app accepts 8-bit baseline, extended sequential, and progressive DCT JPEGs,
 including grayscale and EXIF orientations 1–8. The limit is 50 MiB and 100
@@ -30,9 +33,11 @@ edge blocks can retain sensitive information.
 
 ## How it works
 
-A Web Worker runs `jpegtran -crop` on the original JPEG bytes. There is no
-Canvas encoder, quality setting, or lossy export fallback. Each crop gets a
-fresh worker with cancellation and a 60-second timeout.
+A Web Worker runs `jpegtran -crop` or `jpegtran -rotate` on JPEG coefficients.
+There is no Canvas encoder, quality setting, or lossy export fallback. Each operation gets a
+fresh worker with cancellation and a 60-second timeout. A perfect turn preserves
+all image blocks; an approved edge trim discards the affected strip without
+recompressing the remaining blocks.
 
 The engine is built from libjpeg-turbo 3.2.0 source by
 [`scripts/build-wasm.sh`](scripts/build-wasm.sh). The script verifies the

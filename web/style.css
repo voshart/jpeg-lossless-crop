@@ -92,6 +92,8 @@ fieldset:disabled input { opacity: .5; }
 .tool-panel-toggle[aria-expanded="true"] .panel-rail { fill: currentColor; opacity: .18; }
 #panel-toggle-slot { display: flex; flex: none; }
 #panel-toggle-slot .tool-panel-toggle { border-color: var(--rule); }
+.rotate-controls { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .5rem; }
+.rotate-controls button { min-width: 0; }
 .file-name { overflow-wrap: anywhere; font-size: .75rem; line-height: 1.5; margin: .7rem 0 0; color: var(--ink-2); }
 dl { margin: .7rem 0 0; font: .7rem/1.7 var(--mono); }
 dl div { display: flex; justify-content: space-between; gap: .5rem; }
