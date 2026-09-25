@@ -199,7 +199,9 @@ async function rotateSource(direction) {
   let plan;
   try { plan = rotationPlan(info, direction); }
   catch (e) { error(e.message); return; }
-  if (plan.trim && !window.confirm('Turning this photo will cut off a thin strip along one edge; do you want to continue?')) return;
+  if (plan.trim) {
+    if (!window.confirm(`Turning this photo ${direction} will remove a ${plan.cutPixels}-pixel strip from the ${plan.edge} edge shown here; do you want to continue?`)) return;
+  }
   error(); setBusy(true); status('Turning JPEG…');
   try {
     const original = source;
@@ -209,7 +211,7 @@ async function rotateSource(direction) {
     setBusy(false);
     if (await openFile(rotated)) {
       status(plan.trim
-        ? 'Photo turned without recompression; a thin edge strip was removed.'
+        ? `Photo turned without recompression; a ${plan.cutPixels}-pixel strip was removed from the ${plan.edge} edge as it appeared before turning.`
         : 'Photo turned without recompression.');
     }
   } catch (e) {

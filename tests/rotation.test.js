@@ -30,9 +30,24 @@ test('left and right turns follow displayed direction for every EXIF orientation
 
 test('partial source edges are identified before a turn', () => {
   const info={width:101,height:79,mcuWidth:16,mcuHeight:8,orientation:1};
-  assert.deepEqual(rotationPlan(info,'right'),{degrees:90,cutPixels:7,trim:true});
-  assert.deepEqual(rotationPlan(info,'left'),{degrees:270,cutPixels:5,trim:true});
-  assert.deepEqual(rotationPlan({...info,orientation:2},'right'),{degrees:270,cutPixels:5,trim:true});
+  assert.deepEqual(rotationPlan(info,'right'),{degrees:90,cutPixels:7,trim:true,edge:'bottom'});
+  assert.deepEqual(rotationPlan(info,'left'),{degrees:270,cutPixels:5,trim:true,edge:'right'});
+  assert.deepEqual(rotationPlan({...info,orientation:2},'right'),{degrees:270,cutPixels:5,trim:true,edge:'left'});
   assert.throws(()=>rotationPlan(info,'up'));
   assert.throws(() => rotationPlan({ ...info, height: 7 }, 'right'), /too small/);
+});
+
+test('trim warnings name the edge visible before turning for every EXIF orientation', () => {
+  const edges = [
+    ['bottom', 'right'], ['bottom', 'left'], ['top', 'left'], ['top', 'right'],
+    ['right', 'bottom'], ['left', 'bottom'], ['left', 'top'], ['right', 'top'],
+  ];
+  const info = { width: 101, height: 79, mcuWidth: 16, mcuHeight: 8 };
+  for (let orientation = 1; orientation <= 8; orientation++) {
+    for (const direction of ['left', 'right']) {
+      const plan = rotationPlan({ ...info, orientation }, direction);
+      const rawEdge = plan.degrees === 90 ? 0 : 1;
+      assert.equal(plan.edge, edges[orientation - 1][rawEdge], `${orientation} ${direction}`);
+    }
+  }
 });
