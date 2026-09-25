@@ -65,30 +65,44 @@
           <button id="draw-mode" type="button" aria-pressed="true" disabled>Draw new</button>
           <button id="adjust-mode" type="button" aria-pressed="false" disabled>Adjust</button>
         </div>
+        <label class="zoom-control">Zoom
+          <select id="zoom" aria-label="Preview zoom" aria-controls="drop-area" disabled>
+            <option value="fit">Fit</option>
+            <option value="1">100%</option>
+            <option value="2">200%</option>
+            <option value="4">400%</option>
+          </select>
+        </label>
         <span id="crop-size">—</span>
+        <div class="workspace-actions" role="group" aria-label="Save crop">
+          <button id="save-toolbar" type="button" class="primary" disabled>Save crop</button>
+          <button id="cancel-toolbar" type="button" hidden>Cancel</button>
+        </div>
       </div>
       <div id="drop-area" class="stage-wrap">
-        <div id="empty" class="empty-state">
-          <p>Drop a JPEG here</p>
-          <button id="open-empty" type="button">Open JPEG</button>
-        </div>
-        <div id="stage" class="stage" role="group" aria-label="JPEG crop workspace" aria-describedby="interaction-help" tabindex="-1" hidden>
-          <img id="image" alt="Source image for cropping" draggable="false">
-          <div class="stage-overlay" aria-hidden="true">
-            <div id="selection" class="selection"></div>
-            <div id="snap-preview" class="snap-preview" hidden>
-              <i class="snap-x"></i><i class="snap-y"></i><i class="snap-point"></i>
-            </div>
+        <div id="stage-space" class="stage-space">
+          <div id="empty" class="empty-state">
+            <p>Drop a JPEG here</p>
+            <button id="open-empty" type="button">Open JPEG</button>
           </div>
-          <div id="adjustment" class="adjustment" hidden>
-            <button type="button" class="resize-handle" data-handle="nw" aria-label="Resize top left corner; use arrow keys" aria-describedby="interaction-help"></button>
-            <button type="button" class="resize-handle" data-handle="n" aria-label="Resize top edge; use arrow keys" aria-describedby="interaction-help"></button>
-            <button type="button" class="resize-handle" data-handle="ne" aria-label="Resize top right corner; use arrow keys" aria-describedby="interaction-help"></button>
-            <button type="button" class="resize-handle" data-handle="e" aria-label="Resize right edge; use arrow keys" aria-describedby="interaction-help"></button>
-            <button type="button" class="resize-handle" data-handle="se" aria-label="Resize bottom right corner; use arrow keys" aria-describedby="interaction-help"></button>
-            <button type="button" class="resize-handle" data-handle="s" aria-label="Resize bottom edge; use arrow keys" aria-describedby="interaction-help"></button>
-            <button type="button" class="resize-handle" data-handle="sw" aria-label="Resize bottom left corner; use arrow keys" aria-describedby="interaction-help"></button>
-            <button type="button" class="resize-handle" data-handle="w" aria-label="Resize left edge; use arrow keys" aria-describedby="interaction-help"></button>
+          <div id="stage" class="stage" role="group" aria-label="JPEG crop workspace" aria-describedby="interaction-help" tabindex="-1" hidden>
+            <img id="image" alt="Source image for cropping" draggable="false">
+            <div class="stage-overlay" aria-hidden="true">
+              <div id="selection" class="selection"></div>
+              <div id="snap-preview" class="snap-preview" hidden>
+                <i class="snap-x"></i><i class="snap-y"></i><i class="snap-point"></i>
+              </div>
+            </div>
+            <div id="adjustment" class="adjustment" hidden>
+              <button type="button" class="resize-handle" data-handle="nw" aria-label="Resize top left corner; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="n" aria-label="Resize top edge; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="ne" aria-label="Resize top right corner; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="e" aria-label="Resize right edge; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="se" aria-label="Resize bottom right corner; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="s" aria-label="Resize bottom edge; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="sw" aria-label="Resize bottom left corner; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="w" aria-label="Resize left edge; use arrow keys" aria-describedby="interaction-help"></button>
+            </div>
           </div>
         </div>
       </div>
@@ -100,7 +114,7 @@
         </div>
         <details class="interaction-details">
           <summary>Controls</summary>
-          <p id="interaction-help">Hover to preview snapping. Drag to draw, then drag inside to move or use a handle to resize. Arrow keys move a focused crop or resize a focused handle; Shift moves 10 steps. Escape cancels a drag. Use Draw new to replace the selection.</p>
+          <p id="interaction-help">Hover to preview snapping. Drag to draw, then drag inside to move or use a handle to resize. Arrow keys move a focused crop or resize a focused handle; Shift moves 10 steps. Escape cancels a drag. Use Draw new to replace the selection. Zoom changes only the preview; use scrollbars to pan, or Fit to see the whole image.</p>
         </details>
       </div>
     </section>

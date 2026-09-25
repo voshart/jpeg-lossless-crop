@@ -1,6 +1,7 @@
 import { parseJpeg, MAX_FILE_BYTES } from './jpeg.js';
 import { snapCrop } from './geometry.js';
 import { createCropInteraction } from './crop-interaction.js';
+import { createPreview } from './preview.js';
 
 const $ = id => document.getElementById(id);
 const fields = ['x', 'y', 'width', 'height'];
@@ -17,8 +18,9 @@ function setBusy(value) {
   $('crop-controls').disabled = value || !source;
   $('export-controls').disabled = !source;
   $('keep-metadata').disabled = value;
-  $('save').disabled = value || !source;
-  $('cancel').hidden = !value || !pendingCancel;
+  for (const id of ['save', 'save-toolbar']) $(id).disabled = value || !source;
+  $('zoom').disabled = value || !source;
+  for (const id of ['cancel', 'cancel-toolbar']) $(id).hidden = !value || !pendingCancel;
   $('stage').setAttribute('aria-busy', String(value));
   cropUI.setEnabled(Boolean(source) && !value);
 }
@@ -36,18 +38,11 @@ const cropUI = createCropInteraction({
   stage: $('stage'), state: () => ({ info, crop }),
   apply: updateSelection, status, clearError: error,
 });
-function fitPreview() {
-  if (!info) return;
-  const area = $('drop-area'), style = getComputedStyle(area);
-  const ratio = info.displayWidth / info.displayHeight;
-  // Fit the actual workspace, including when the controls collapse or help opens.
-  // Do not reserve space for the removed page heading or assume desktop padding.
-  const availableWidth = area.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-  const availableHeight = area.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-  const width = Math.max(1, Math.min(availableWidth, availableHeight * ratio, info.displayWidth));
-  $('stage').style.width = `${width}px`;
-  $('stage').style.height = `${width / ratio}px`;
-}
+const preview = createPreview({
+  viewport: $('drop-area'), space: $('stage-space'), stage: $('stage'),
+  control: $('zoom'), getInfo: () => info,
+});
+const fitPreview = () => preview.render();
 async function openFile(file) {
   if (busy || !file) return;
   const sequence = ++loadSequence;
@@ -76,7 +71,7 @@ async function openFile(file) {
     $('blocks').textContent = `${info.mcuWidth} × ${info.mcuHeight}`;
     $('x').max = String(info.displayWidth-1); $('y').max = String(info.displayHeight-1);
     $('width').max = String(info.displayWidth); $('height').max = String(info.displayHeight);
-    fitPreview(); updateSelection({ x: 0, y: 0, width: info.displayWidth, height: info.displayHeight });
+    preview.reset(); updateSelection({ x: 0, y: 0, width: info.displayWidth, height: info.displayHeight });
     cropUI.setMode('draw');
     status('Move over the image to preview snapping, then drag to draw a crop.');
   } catch (e) {
@@ -153,7 +148,7 @@ function cropInWorker(bytes, rect, keepMetadata) {
     };
     const timer = setTimeout(() => finish(new Error('Cropping timed out after 60 seconds. Try a smaller image.')), 60_000);
     pendingCancel = () => finish(new Error('Cropping cancelled.'));
-    $('cancel').hidden = false;
+    for (const id of ['cancel', 'cancel-toolbar']) $(id).hidden = false;
     worker.onmessage = ({ data }) => data.ok ? finish(null, data) : finish(new Error(data.error));
     worker.onerror = event => { event.preventDefault(); finish(new Error('The JPEG worker failed to load or run. Check the local WASM build.')); };
     worker.onmessageerror = () => finish(new Error('The JPEG worker returned an unreadable result.'));
@@ -161,8 +156,8 @@ function cropInWorker(bytes, rect, keepMetadata) {
     catch (e) { finish(e); }
   });
 }
-$('cancel').addEventListener('click', () => pendingCancel?.());
-$('save').addEventListener('click', async () => {
+for (const id of ['cancel', 'cancel-toolbar']) $(id).addEventListener('click', () => pendingCancel?.());
+async function saveCrop() {
   if (busy || !source) return;
   error();
   try { updateSelection(readCoordinates()); } catch (e) { error(e.message); return; }
@@ -179,7 +174,9 @@ $('save').addEventListener('click', async () => {
     status(`Saved ${result.crop.width} × ${result.crop.height} px without recompression.`);
   } catch (e) { error(e.message); status('No JPEG was exported.'); }
   finally { setBusy(false); }
-});
+}
+// Both buttons use the same validation, metadata settings and worker path.
+for (const id of ['save', 'save-toolbar']) $(id).addEventListener('click', saveCrop);
 new ResizeObserver(fitPreview).observe($('drop-area'));
 window.addEventListener('resize', fitPreview);
 window.addEventListener('pagehide', () => {
