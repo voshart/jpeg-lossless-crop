@@ -16,7 +16,7 @@ Open a JPEG, then drag on the preview or enter X, Y, width, and height. The
 placement crosshair snaps to the JPEG block grid. Drag toward the free-edge
 corner to refine the far corner by pixels; on an unrotated image, that is the
 lower-right corner. EXIF orientation can change which displayed corner is free.
-The overlay and fields show the resulting crop area. Orange marks source pixels
+The overlay and fields show the resulting crop area. Orange stripes mark source pixels
 retained in partial edge blocks outside the visible crop. The Turn left and Turn
 right buttons rotate the source before cropping and reset the selection. If
 turning requires removing a thin edge strip, the app asks before doing so. Save
