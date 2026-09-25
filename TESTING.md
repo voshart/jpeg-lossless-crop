@@ -23,7 +23,8 @@ The committed WASM engine returned a 53 × 37 JPEG from libjpeg-turbo
 `testorig.jpg` using a 53 × 37 crop at raw offset 16,16. That verifies the
 engine can preserve a pixel-exact lower-right boundary in a direct run, but the
 browser worker and download flow remain unverified end to end. An independent
-coefficient comparison has not run.
+coefficient comparison has not run. The orange retained-edge indicator has
+geometry tests, but its appearance has not been checked in a browser.
 
 Before declaring this ready for production:
 

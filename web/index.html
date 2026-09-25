@@ -89,6 +89,8 @@
             <img id="image" alt="Source image for cropping" draggable="false">
             <div class="stage-overlay" aria-hidden="true">
               <div id="selection" class="selection"></div>
+              <div id="retained-edge-a" class="retained-edge" hidden></div>
+              <div id="retained-edge-b" class="retained-edge" hidden></div>
               <div id="snap-preview" class="snap-preview" hidden>
                 <i class="snap-x"></i><i class="snap-y"></i><i class="snap-point"></i>
               </div>
@@ -109,12 +111,13 @@
       <div class="workspace-note">
         <div class="workspace-feedback">
           <p id="status" role="status" aria-live="polite"></p>
+          <p id="retained-note" class="retained-note" hidden><span class="retained-key" aria-hidden="true"></span>Orange marks source pixels kept in JPEG edge blocks outside the visible crop.</p>
           <p id="pointer-readout" class="pointer-readout" aria-hidden="true"></p>
           <p id="error" role="alert" hidden></p>
         </div>
         <details class="interaction-details">
           <summary>Controls</summary>
-          <p id="interaction-help">Hover to preview a pixel position. Drag to draw, then drag inside to move or use a handle to resize. Arrow keys move a focused crop by JPEG blocks. A focused handle moves a constrained edge by blocks or a free edge by pixels; Shift moves 10 steps. Escape cancels a drag. Use Draw new to replace the selection. Zoom changes only the preview; use scrollbars to pan, or Fit to see the whole image.</p>
+          <p id="interaction-help">Hover to preview a JPEG block boundary. Drag toward the free-edge corner to refine the far corner by pixels; on an unrotated image, that is lower right. Drag inside to move or use a handle to resize. Arrow keys move a focused crop by JPEG blocks. A focused handle moves a constrained edge by blocks or a free edge by pixels; Shift moves 10 steps. Escape cancels a drag. Use Draw new to replace the selection. Zoom changes only the preview; use scrollbars to pan, or Fit to see the whole image.</p>
         </details>
       </div>
     </section>

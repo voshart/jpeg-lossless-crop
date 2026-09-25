@@ -1,5 +1,5 @@
 import { parseJpeg, MAX_FILE_BYTES } from './jpeg.js';
-import { snapCrop } from './geometry.js';
+import { snapCrop, rawToDisplay, retainedEdgeRects } from './geometry.js';
 import { createCropInteraction } from './crop-interaction.js';
 import { createPreview } from './preview.js';
 
@@ -32,6 +32,18 @@ function updateSelection(rect) {
     left: `${r.x/info.displayWidth*100}%`, top: `${r.y/info.displayHeight*100}%`,
     width: `${r.width/info.displayWidth*100}%`, height: `${r.height/info.displayHeight*100}%`,
   });
+  const retained = retainedEdgeRects(crop.raw, info);
+  for (const [index, id] of ['retained-edge-a', 'retained-edge-b'].entries()) {
+    const element = $(id), rawRect = retained[index];
+    element.hidden = !rawRect;
+    if (!rawRect) continue;
+    const edge = rawToDisplay(rawRect, info);
+    Object.assign(element.style, {
+      left: `${edge.x/info.displayWidth*100}%`, top: `${edge.y/info.displayHeight*100}%`,
+      width: `${edge.width/info.displayWidth*100}%`, height: `${edge.height/info.displayHeight*100}%`,
+    });
+  }
+  $('retained-note').hidden = retained.length === 0;
   $('crop-size').textContent = `${r.width} × ${r.height} px`;
 }
 const cropUI = createCropInteraction({
@@ -73,7 +85,9 @@ async function openFile(file) {
     $('width').max = String(info.displayWidth); $('height').max = String(info.displayHeight);
     preview.reset(); updateSelection({ x: 0, y: 0, width: info.displayWidth, height: info.displayHeight });
     cropUI.setMode('draw');
-    status('Drag to draw. JPEG block-start edges align; opposite edges stay pixel-exact.');
+    const freeCorner = rawToDisplay({ x: info.width, y: info.height, width: 0, height: 0 }, info);
+    const cornerName = `${freeCorner.y === 0 ? 'upper' : 'lower'} ${freeCorner.x === 0 ? 'left' : 'right'}`;
+    status(`Hover for block placement. Drag toward ${cornerName} for pixel refinement.`);
   } catch (e) {
     if (url && url !== previewUrl) URL.revokeObjectURL(url);
     error(e.message); status(source ? 'Previous JPEG is still selected.' : 'No JPEG loaded.');

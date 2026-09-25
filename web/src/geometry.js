@@ -31,3 +31,18 @@ export function snapCrop(rect, info) {
   const raw = { x, y, width: right-x, height: bottom-y };
   return { raw, display: rawToDisplay(raw, info) };
 }
+
+/** Source pixels outside the visible crop but represented by its final iMCUs. */
+export function retainedEdgeRects(raw, info) {
+  const right = raw.x + raw.width, bottom = raw.y + raw.height;
+  const encodedRight = Math.min(info.width, Math.ceil(right / info.mcuWidth) * info.mcuWidth);
+  const encodedBottom = Math.min(info.height, Math.ceil(bottom / info.mcuHeight) * info.mcuHeight);
+  const rects = [];
+  if (encodedRight > right) {
+    rects.push({ x: right, y: raw.y, width: encodedRight - right, height: encodedBottom - raw.y });
+  }
+  if (encodedBottom > bottom) {
+    rects.push({ x: raw.x, y: bottom, width: raw.width, height: encodedBottom - bottom });
+  }
+  return rects;
+}

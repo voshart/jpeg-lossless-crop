@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rawToDisplay, snapCrop } from '../web/src/geometry.js';
-import { drawCrop, resizeCrop, moveCrop, handlePoint } from '../web/src/crop-interaction.js';
+import { snapPoint, drawCrop, resizeCrop, moveCrop, handlePoint } from '../web/src/crop-interaction.js';
 
 function info(orientation = 1, mcuWidth = 16, mcuHeight = 8) {
   return { width: 101, height: 79, mcuWidth, mcuHeight, orientation,
@@ -12,15 +12,38 @@ function assertAligned(rect, image) {
   assert.deepEqual(snapCrop(rect, image).display, rect, 'Export must not resnap a displayed selection');
 }
 
-test('draw keeps pixel-exact free edges in all drag directions', () => {
+test('placement crosshair snaps to the JPEG grid in every orientation', () => {
   for (let o=1;o<=8;o++) {
-    const image=info(o), a={x:20,y:19}, b={x:68,y:56};
-    const rect=drawCrop(a,b,image); assertAligned(rect,image);
-    assert.deepEqual(drawCrop(b,a,image),rect);
-    const raw=snapCrop(rect,image).raw;
-    const requested=snapCrop({x:20,y:19,width:48,height:37},image).raw;
-    assert.deepEqual(raw,requested);
+    const image=info(o);
+    const raw={x:16,y:16,width:0,height:0};
+    const point=rawToDisplay(raw,image);
+    assert.deepEqual(snapPoint({x:point.x+2,y:point.y+2},image),{x:point.x,y:point.y});
+  }
+  assert.throws(() => snapPoint({x:NaN,y:0},info()));
+});
+test('drawing toward the raw lower-right refines only the far corner by pixels', () => {
+  for (let o=1;o<=8;o++) {
+    const image=info(o);
+    const a=rawToDisplay({x:16,y:16,width:0,height:0},image);
+    const b=rawToDisplay({x:53,y:39,width:0,height:0},image);
+    const drawn=drawCrop(a,b,image);
+    assertAligned(drawn,image);
+    assert.deepEqual(snapCrop(drawn,image).raw,{x:16,y:16,width:37,height:23});
     assert.equal(drawCrop(a,a,image),null);
+  }
+});
+test('drawing toward other corners keeps both endpoints on block boundaries', () => {
+  for (let o=1;o<=8;o++) {
+    const image=info(o);
+    const a=rawToDisplay({x:64,y:48,width:0,height:0},image);
+    const b=rawToDisplay({x:20,y:19,width:0,height:0},image);
+    const drawn=drawCrop(a,b,image);
+    assertAligned(drawn,image);
+    const raw=snapCrop(drawn,image).raw;
+    assert.equal(raw.x%image.mcuWidth,0);
+    assert.equal(raw.y%image.mcuHeight,0);
+    assert.equal((raw.x+raw.width)%image.mcuWidth,0);
+    assert.equal((raw.y+raw.height)%image.mcuHeight,0);
   }
 });
 test('every resize handle stays aligned, clamps, and keeps opposite edges fixed', () => {

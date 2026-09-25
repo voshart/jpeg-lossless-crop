@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { displayToRaw, rawToDisplay, snapCrop } from '../web/src/geometry.js';
+import { displayToRaw, rawToDisplay, snapCrop, retainedEdgeRects } from '../web/src/geometry.js';
 const base = {width:101,height:79,mcuWidth:16,mcuHeight:16};
 test('all orientation transforms invert and map the whole image correctly', () => {
   for (let orientation=1; orientation<=8; orientation++) {
@@ -32,4 +32,17 @@ test('rejects non-finite, empty and fully out-of-bounds selections', () => {
   for (const r of [{x:NaN,y:0,width:1,height:1},{x:0,y:0,width:0,height:2},{x:102,y:0,width:4,height:4}]) {
     assert.throws(() => snapCrop(r,info));
   }
+});
+
+test('retained edge markers cover only source pixels beyond exact crop dimensions', () => {
+  const info={...base,orientation:1};
+  const raw={x:16,y:16,width:37,height:23};
+  assert.deepEqual(retainedEdgeRects(raw,info),[
+    {x:53,y:16,width:11,height:32},
+    {x:16,y:39,width:37,height:9},
+  ]);
+  assert.deepEqual(retainedEdgeRects({x:80,y:64,width:21,height:15},info),[]);
+  const mirrored={...base,orientation:2};
+  const [right]=retainedEdgeRects(raw,mirrored).map(r=>rawToDisplay(r,mirrored));
+  assert.deepEqual(right,{x:37,y:16,width:11,height:32});
 });

@@ -13,8 +13,10 @@ coordinates so the selected overlay matches the output dimensions.
 
 ## Controls
 
-- Draw uses whole-pixel pointer coordinates. The block-constrained sides expand
-  outward; the opposite sides retain the chosen pixel positions.
+- The placement crosshair snaps to the nearest JPEG grid intersection. A draw
+  toward the raw lower-right refines its far corner by pixels; other draw
+  directions keep both endpoints on the grid. EXIF orientation can move that
+  fine-drag corner to another displayed corner.
 - Resize handles keep their opposite edges fixed. A handle on a free side moves
   by pixels; a handle on a constrained side snaps to the nearest iMCU boundary.
 - Moving a crop translates its raw origin in whole iMCU steps without changing
@@ -22,6 +24,11 @@ coordinates so the selected overlay matches the output dimensions.
 - Arrow keys move the selected crop by one iMCU step. A focused handle moves its
   edge by one block or one pixel according to that edge. Shift uses ten steps.
   Escape, pointer cancellation, or lost capture restores the previous crop.
+
+A small orange overlay shows source pixels that remain represented by partial
+final iMCUs outside the visible crop. It appears only where the chosen free edge
+cuts through an iMCU; source-edge padding is not highlighted. The overlay is
+visual guidance, not part of the downloaded JPEG.
 
 The worker still passes original JPEG bytes to source-built `jpegtran -crop` and
 checks the output dimensions. No pixel encoder or fallback is used.

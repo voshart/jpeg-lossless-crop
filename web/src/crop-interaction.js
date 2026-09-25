@@ -29,10 +29,27 @@ function nearestBoundary(value, grid, low = 0, high = grid.limit) {
   return candidates[0];
 }
 
+export function snapPoint(point, info) {
+  return { x: nearestBoundary(point.x, displayGrid(info, 'x')),
+    y: nearestBoundary(point.y, displayGrid(info, 'y')) };
+}
+
 function pixelPoint(point, info) {
   if (![point.x, point.y].every(Number.isFinite)) throw new Error('A finite pointer coordinate is required.');
   return { x: clamp(Math.round(point.x), 0, info.displayWidth),
     y: clamp(Math.round(point.y), 0, info.displayHeight) };
+}
+
+function rawPoint(point, info) {
+  return displayToRaw({ ...point, width: 0, height: 0 }, info);
+}
+
+function drawEndpoint(anchor, end, info) {
+  const pixel = pixelPoint(end, info);
+  const startRaw = rawPoint(anchor, info), endRaw = rawPoint(pixel, info);
+  // Only a drag toward the raw lower-right can use both JPEG frame-size edges.
+  const fine = endRaw.x > startRaw.x && endRaw.y > startRaw.y;
+  return { point: fine ? pixel : snapPoint(end, info), fine };
 }
 
 // The raw top/left block origin can appear on either displayed side after EXIF orientation.
@@ -50,7 +67,7 @@ function nearestEdge(value, info, axis, side, low, high) {
 }
 
 export function drawCrop(start, end, info) {
-  const a = pixelPoint(start, info), b = pixelPoint(end, info);
+  const a = snapPoint(start, info), b = drawEndpoint(a, end, info).point;
   if (a.x === b.x || a.y === b.y) return null;
   return snapCrop({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y),
     width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) }, info).display;
@@ -145,7 +162,7 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
   function hover(event) {
     if (!enabled || event.pointerType === 'touch') { hidePreview(); return; }
     const { info, crop } = state(), kind = action(event);
-    if (kind === 'draw') showPoint(pixelPoint(position(event), info), 'Pixel');
+    if (kind === 'draw') showPoint(snapPoint(position(event), info));
     else if (kind === 'move') {
       preview.hidden = true;
       readout.textContent = `Move crop · X ${crop.display.x} · Y ${crop.display.y} px`;
@@ -158,7 +175,8 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
     let rect;
     if (drag.kind === 'draw') {
       rect = drawCrop(drag.anchor, point, info);
-      showPoint(pixelPoint(point, info), 'Pixel');
+      const endpoint = drawEndpoint(drag.anchor, point, info);
+      showPoint(endpoint.point, endpoint.fine ? 'Pixel' : 'Snap');
     } else if (drag.kind === 'move') {
       rect = moveCrop(drag.previous, { x: point.x - drag.start.x, y: point.y - drag.start.y }, info);
       preview.hidden = true;
@@ -190,12 +208,12 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
     if (!enabled || drag || event.button !== 0 || event.isPrimary === false) return;
     event.preventDefault(); clearError();
     const { info, crop } = state(), point = position(event), kind = action(event);
-    drag = { id: event.pointerId, kind, start: point, anchor: pixelPoint(point, info),
+    drag = { id: event.pointerId, kind, start: point, anchor: snapPoint(point, info),
       previous: { ...crop.display }, clientX: event.clientX, clientY: event.clientY, changed: false };
     stage.dataset.drag = kind;
     (event.target.closest('[data-handle]') || stage).focus({ preventScroll: true });
     stage.setPointerCapture(event.pointerId);
-    if (kind === 'draw') showPoint(drag.anchor, 'Pixel');
+    if (kind === 'draw') showPoint(drag.anchor);
   });
   stage.addEventListener('pointermove', event => drag ? changeDrag(event) : hover(event));
   stage.addEventListener('pointerup', event => {
