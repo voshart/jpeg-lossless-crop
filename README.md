@@ -4,18 +4,15 @@ A small browser tool for cropping JPEGs without recompressing their image data.
 Plain HTML, CSS, and JavaScript modules. No framework, bundler, runtime npm
 dependencies, CDN, image upload, analytics, or external fonts.
 
-**Starter status:** the interface, header parser, crop geometry, and worker
-adapter are implemented. The JPEG engine is deliberately not bundled. Build it
-from the pinned upstream source before exporting. The WASM build and actual
-JPEG export have not yet been verified end to end; see `TESTING.md`.
+**Current status:** the interface, header parser, crop geometry, and worker
+adapter are implemented. A source-built JPEG engine is included for deployment,
+but an actual JPEG export has not been verified end to end; see `TESTING.md`.
 
 ## Run the interface in WSL
 
 ```bash
 git clone https://github.com/voshart/jpeg-lossless-crop.git
 cd jpeg-lossless-crop
-# For the initial draft PR:
-git switch starter/vanilla-crop
 code .
 python3 scripts/serve.py
 ```
@@ -24,9 +21,8 @@ Open `http://127.0.0.1:8000` in your Windows browser. The server binds only to
 loopback and serves `web/`, not the repository or build directories. Node is
 not needed to use the interface. Stop the server with Ctrl+C.
 
-You can open a JPEG, preview it, and adjust a selection before building the
-engine. Saving before the build produces an explicit error, not a recompressed
-image. There is no installation command for the front end.
+You can open a JPEG, preview it, and adjust a selection. There is no
+installation command for the front end.
 
 ## Build the JPEG engine
 
@@ -108,12 +104,14 @@ The interface uses system sans-serif and monospace fonts, paper/ink colour
 tokens, thin dividers, square buttons, and automatic light/dark themes. Edit
 `web/style.css` directly. Project constraints are recorded in `AGENTS.md`.
 
-No hosting, GitHub Pages, or Actions workflow has been enabled. Deploy only
-`web/` after building and testing the engine. Include the generated notices and
-manifest. Configure the production host to send the same security headers as
-`scripts/serve.py`, including on worker scripts: a document's meta CSP alone is
-not a substitute for a worker's response CSP. `connect-src 'self'` is a useful
-restriction, not an absolute guarantee of no network activity.
+For Cloudflare Pages Git integration, select `main` as the production branch,
+no framework, no build command, and `web` as the build output directory. The
+committed engine, notices, and manifest are deployed with the interface.
+`web/_headers` applies the local server's security headers to static responses,
+including worker scripts. An HTML meta CSP alone does not cover worker responses.
+Verify an actual JPEG export before treating the site as production-ready.
+`connect-src 'self'` is a useful restriction, not an absolute guarantee of no
+network activity.
 
 ## Licensing
 

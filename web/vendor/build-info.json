@@ -1,0 +1,10 @@
+{
+  "upstream": "libjpeg-turbo",
+  "version": "3.2.0",
+  "source_sha256": "6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e",
+  "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)",
+  "files": {
+    "jpegtran.js": "87e79c90e976cf344d2d1945cc78c681f3d6e904a67f4ae8199c2d0f141c9c03",
+    "jpegtran.wasm": "7db7731991fa9d785d5cc24f7dae8e68828784bc90f41ea13b77656fe014f98b"
+  }
+}

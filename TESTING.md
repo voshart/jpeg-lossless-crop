@@ -2,7 +2,7 @@
 
 ## Completed for the starter
 
-- Eight passing Node test cases: JPEG sampling factors, baseline/progressive
+- Passing Node test cases: JPEG sampling factors, baseline/progressive
   headers, all EXIF orientations, 32-bit TIFF offset bounds, minimal orientation
   metadata, invalid input handling, transform inverses, and crop snapping.
 - Bash syntax check of `scripts/build-wasm.sh`.
@@ -17,9 +17,10 @@ CSP, module loading over HTTP, the worker, downloads, or an actual JPEG crop.
 
 ## Not yet verified
 
-The WASM build was not run: `emcmake` was unavailable in the execution
-environment. The script stops with that missing-tool message. The engine adapter
-is therefore a starter implementation, not a verified working codec build.
+Source-built WASM files and their build manifest are now included for hosting.
+Their recorded hashes match the local files, but this session has not rebuilt
+them or verified an actual JPEG export. The engine adapter remains unverified
+end to end.
 
 Before declaring this ready for production:
 
