@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / 'web'
 CSP = ("default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; "
-       "style-src 'self' 'unsafe-inline'; img-src blob:; worker-src 'self'; "
+       "style-src 'self'; style-src-attr 'none'; img-src blob:; worker-src 'self'; "
        "connect-src 'self'; object-src 'none'; base-uri 'none'; "
        "form-action 'none'; frame-ancestors 'none'")
 
