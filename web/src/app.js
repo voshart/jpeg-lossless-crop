@@ -13,6 +13,7 @@ function status(message) { $('status').textContent = message; }
 function setBusy(value) {
   busy = value;
   $('open').disabled = value;
+  $('open-empty').disabled = value;
   $('crop-controls').disabled = value || !source;
   $('export-controls').disabled = !source;
   $('keep-metadata').disabled = value;
@@ -37,10 +38,15 @@ const cropUI = createCropInteraction({
 });
 function fitPreview() {
   if (!info) return;
-  const ratio = info.displayWidth/info.displayHeight;
-  const width = Math.max(1, Math.min($('drop-area').clientWidth-48, Math.max(220, innerHeight-280)*ratio, info.displayWidth));
+  const area = $('drop-area'), style = getComputedStyle(area);
+  const ratio = info.displayWidth / info.displayHeight;
+  // Fit the actual workspace, including when the controls collapse or help opens.
+  // Do not reserve space for the removed page heading or assume desktop padding.
+  const availableWidth = area.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const availableHeight = area.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+  const width = Math.max(1, Math.min(availableWidth, availableHeight * ratio, info.displayWidth));
   $('stage').style.width = `${width}px`;
-  $('stage').style.aspectRatio = `${info.displayWidth} / ${info.displayHeight}`;
+  $('stage').style.height = `${width / ratio}px`;
 }
 async function openFile(file) {
   if (busy || !file) return;
@@ -79,6 +85,22 @@ async function openFile(file) {
   } finally { if (sequence === loadSequence) setBusy(false); }
 }
 $('open').addEventListener('click', () => $('file').click());
+$('open-empty').addEventListener('click', () => { if (!busy) $('file').click(); });
+// Match the optimizer's collapsible settings panel, without storing preferences.
+$('panel-toggle').addEventListener('click', () => {
+  const panel = $('side-panel'), toggle = $('panel-toggle');
+  const collapsed = !panel.hidden;
+  const slot = $('panel-toggle-slot');
+  slot.hidden = !collapsed;
+  (collapsed ? slot : $('panel-header')).append(toggle);
+  panel.hidden = collapsed;
+  document.body.classList.toggle('sidebar-collapsed', collapsed);
+  toggle.setAttribute('aria-expanded', String(!collapsed));
+  toggle.setAttribute('aria-label', collapsed ? 'Show controls' : 'Hide controls');
+  toggle.title = collapsed ? 'Show controls' : 'Hide controls';
+  toggle.focus({ preventScroll: true });
+  requestAnimationFrame(fitPreview);
+});
 $('file').addEventListener('change', () => { const file = $('file').files[0]; $('file').value = ''; openFile(file); });
 for (const type of ['dragenter', 'dragover']) {
   $('drop-area').addEventListener(type, event => { event.preventDefault(); if (!busy) $('drop-area').classList.add('dragging'); });
