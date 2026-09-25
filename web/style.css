@@ -82,7 +82,7 @@ input[aria-invalid="true"] { border-color: var(--danger); }
 .empty-state { text-align: center; color: var(--ink-2); }
 .empty-title { color: var(--ink); font-weight: 600; letter-spacing: -.02em; font-size: 1.3rem; }
 .empty-state p { margin: .7rem 0; } .empty-state .small { margin-top: 1.8rem; font: .68rem/1.8 var(--mono); }
-.stage { position: relative; max-width: 100%; overflow: hidden; touch-action: none; cursor: crosshair; user-select: none; }
+.stage { position: relative; max-width: 100%; touch-action: none; cursor: crosshair; user-select: none; }
 .stage img { display: block; width: 100%; height: 100%; pointer-events: none; }
 /* The spread is a functional crop mask, not a decorative UI shadow. */
 .selection { position: absolute; border: 1px solid white; outline: 1px solid #111; box-shadow: 0 0 0 9999px rgb(0 0 0 / .5); pointer-events: none; }
@@ -100,4 +100,43 @@ summary { cursor: pointer; } details p { max-width: 68rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; }
+}
+
+/* Interaction aids use the existing monochrome styling. The crop mask is clipped
+   separately so edge handles can remain usable outside the image boundary. */
+.workspace-bar { align-items: center; flex-wrap: wrap; }
+.crop-tools { display: flex; gap: .35rem; margin-inline: auto; }
+.crop-tools button { min-height: 2rem; padding: .3rem .55rem; font-size: .7rem; margin: 0; }
+.crop-tools button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.stage-overlay { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.adjustment { position: absolute; cursor: move; }
+.resize-handle {
+  position: absolute; width: 28px; height: 28px; min-height: 0; margin: 0;
+  padding: 0; border: 0; background: transparent; transform: translate(-50%, -50%);
+  touch-action: none; z-index: 2;
+}
+.resize-handle::after { content: ""; position: absolute; inset: 10px; background: white; border: 1px solid #111; }
+.resize-handle:hover:not(:disabled) { background: transparent; }
+.resize-handle:focus-visible { outline: 2px solid white; outline-offset: -6px; }
+.resize-handle[data-handle="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.resize-handle[data-handle="n"] { left: 50%; top: 0; cursor: ns-resize; }
+.resize-handle[data-handle="ne"] { left: 100%; top: 0; cursor: nesw-resize; }
+.resize-handle[data-handle="e"] { left: 100%; top: 50%; cursor: ew-resize; }
+.resize-handle[data-handle="se"] { left: 100%; top: 100%; cursor: nwse-resize; }
+.resize-handle[data-handle="s"] { left: 50%; top: 100%; cursor: ns-resize; }
+.resize-handle[data-handle="sw"] { left: 0; top: 100%; cursor: nesw-resize; }
+.resize-handle[data-handle="w"] { left: 0; top: 50%; cursor: ew-resize; }
+.stage[data-drag="draw"] *, .stage[data-mode="draw"] { cursor: crosshair; }
+.stage[data-drag="move"] * { cursor: move; }
+.snap-preview { position: absolute; inset: 0; pointer-events: none; }
+.snap-x { position: absolute; left: var(--snap-x); top: 0; bottom: 0; width: 1px; background: white; box-shadow: 1px 0 #111; }
+.snap-y { position: absolute; top: var(--snap-y); left: 0; right: 0; height: 1px; background: white; box-shadow: 0 1px #111; }
+.snap-point { position: absolute; left: var(--snap-x); top: var(--snap-y); width: 7px; height: 7px; transform: translate(-50%, -50%); border: 1px solid #111; background: white; }
+.snap-preview[data-axes="x"] .snap-y, .snap-preview[data-axes="y"] .snap-x,
+.snap-preview:not([data-axes="xy"]) .snap-point { display: none; }
+.workspace-note p { margin: 0; }
+.pointer-readout { min-height: 1.5em; margin-bottom: .4rem !important; font: .7rem/1.5 var(--mono); color: var(--ink); }
+@media (pointer: coarse) {
+  .resize-handle { width: 36px; height: 36px; }
+  .resize-handle::after { inset: 13px; }
 }

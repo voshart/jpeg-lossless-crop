@@ -41,7 +41,7 @@
             <label>Width <input id="width" type="number" min="1" step="1" value="1" required></label>
             <label>Height <input id="height" type="number" min="1" step="1" value="1" required></label>
           </div>
-          <p class="note">Pixels in the displayed image. The selection expands to JPEG block boundaries.</p>
+          <p class="note">Pixels in the displayed image. Dragging snaps to the nearest boundary. Typed coordinates expand outward to block boundaries.</p>
           <button id="reset" type="button" class="wide">Select whole image</button>
         </fieldset>
         <fieldset id="export-controls" disabled>
@@ -55,19 +55,44 @@
         <p id="error" role="alert" hidden></p>
       </aside>
       <section class="workspace" aria-label="Image workspace">
-        <div class="workspace-bar"><span id="view-label">Preview</span><span id="crop-size">—</span></div>
+        <div class="workspace-bar">
+          <span id="view-label">Preview</span>
+          <div class="crop-tools" role="group" aria-label="Crop interaction">
+            <button id="draw-mode" type="button" aria-pressed="true" disabled>Draw new</button>
+            <button id="adjust-mode" type="button" aria-pressed="false" disabled>Adjust</button>
+          </div>
+          <span id="crop-size">—</span>
+        </div>
         <div id="drop-area" class="stage-wrap">
           <div id="empty" class="empty-state">
             <p class="empty-title">Drop a JPEG here</p>
             <p>or use Open JPEG</p>
             <p class="small">JPEG only · No uploads · No quality slider</p>
           </div>
-          <div id="stage" class="stage" hidden>
+          <div id="stage" class="stage" role="group" aria-label="JPEG crop workspace" aria-describedby="interaction-help" tabindex="-1" hidden>
             <img id="image" alt="Source image for cropping" draggable="false">
-            <div id="selection" class="selection" aria-hidden="true"></div>
+            <div class="stage-overlay" aria-hidden="true">
+              <div id="selection" class="selection"></div>
+              <div id="snap-preview" class="snap-preview" hidden>
+                <i class="snap-x"></i><i class="snap-y"></i><i class="snap-point"></i>
+              </div>
+            </div>
+            <div id="adjustment" class="adjustment" hidden>
+              <button type="button" class="resize-handle" data-handle="nw" aria-label="Resize top left corner; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="n" aria-label="Resize top edge; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="ne" aria-label="Resize top right corner; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="e" aria-label="Resize right edge; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="se" aria-label="Resize bottom right corner; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="s" aria-label="Resize bottom edge; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="sw" aria-label="Resize bottom left corner; use arrow keys" aria-describedby="interaction-help"></button>
+              <button type="button" class="resize-handle" data-handle="w" aria-label="Resize left edge; use arrow keys" aria-describedby="interaction-help"></button>
+            </div>
           </div>
         </div>
-        <p class="workspace-note">Drag to draw a selection. Use the fields for exact placement.</p>
+        <div class="workspace-note">
+          <p id="pointer-readout" class="pointer-readout" aria-hidden="true"></p>
+          <p id="interaction-help">Draw a crop, then drag inside to move or use a handle to resize. Arrow keys move a focused crop or resize a focused handle; Shift moves 10 steps. Escape cancels a drag. Use Draw new to replace the selection.</p>
+        </div>
       </section>
     </div>
     <footer>
