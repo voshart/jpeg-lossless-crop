@@ -1,0 +1,8 @@
+.build/
+node_modules/
+web/vendor/jpegtran.js
+web/vendor/jpegtran.wasm
+web/vendor/build-info.json
+web/vendor/*.txt
+__pycache__/
+.DS_Store
