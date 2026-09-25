@@ -23,9 +23,11 @@ export function snapCrop(rect, info) {
   }
   const r = displayToRaw(rect, info), { width: w, height: h, mcuWidth: mw, mcuHeight: mh } = info;
   const left = Math.max(0, r.x), top = Math.max(0, r.y);
-  const right = Math.min(w, r.x+r.width), bottom = Math.min(h, r.y+r.height);
+  const right = Math.min(w, Math.round(r.x+r.width));
+  const bottom = Math.min(h, Math.round(r.y+r.height));
   if (right <= left || bottom <= top) throw new Error('The crop must intersect the image.');
   const x = Math.floor(left/mw)*mw, y = Math.floor(top/mh)*mh;
-  const raw = { x, y, width: Math.min(w, Math.ceil(right/mw)*mw)-x, height: Math.min(h, Math.ceil(bottom/mh)*mh)-y };
+  // JPEG dimensions can stop inside the final iMCU without changing its coefficients.
+  const raw = { x, y, width: right-x, height: bottom-y };
   return { raw, display: rawToDisplay(raw, info) };
 }

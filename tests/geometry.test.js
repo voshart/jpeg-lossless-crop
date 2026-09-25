@@ -13,15 +13,15 @@ test('all orientation transforms invert and map the whole image correctly', () =
     assert.deepEqual(whole,{x:0,y:0,width:orientation>=5?79:101,height:orientation>=5?101:79});
   }
 });
-test('snaps outwards, clamps to partial edge blocks, and is idempotent', () => {
+test('aligns raw top/left, preserves exact lower-right pixels, and is idempotent', () => {
   for (let orientation=1;orientation<=8;orientation++) {
     const info={...base,orientation};
     for (const raw of [{x:17,y:18,width:31,height:27},{x:90,y:70,width:11,height:9}]) {
       const r=snapCrop(rawToDisplay(raw,info),info);
       assert.equal(r.raw.x%16,0); assert.equal(r.raw.y%16,0);
       assert.ok(r.raw.x<=raw.x && r.raw.y<=raw.y);
-      assert.ok(r.raw.x+r.raw.width>=raw.x+raw.width);
-      assert.ok(r.raw.y+r.raw.height>=raw.y+raw.height);
+      assert.equal(r.raw.x+r.raw.width,raw.x+raw.width);
+      assert.equal(r.raw.y+r.raw.height,raw.y+raw.height);
       assert.ok(r.raw.x+r.raw.width<=101 && r.raw.y+r.raw.height<=79);
       assert.deepEqual(snapCrop(r.display,info),r);
     }

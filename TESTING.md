@@ -17,10 +17,13 @@ CSP, module loading over HTTP, the worker, downloads, or an actual JPEG crop.
 
 ## Not yet verified
 
-Source-built WASM files and their build manifest are now included for hosting.
-Their recorded hashes match the local files, but this session has not rebuilt
-them or verified an actual JPEG export. The engine adapter remains unverified
-end to end.
+Source-built WASM files and their build manifest are included for hosting.
+Their recorded hashes match the local files; this session has not rebuilt them.
+The committed WASM engine returned a 53 × 37 JPEG from libjpeg-turbo
+`testorig.jpg` using a 53 × 37 crop at raw offset 16,16. That verifies the
+engine can preserve a pixel-exact lower-right boundary in a direct run, but the
+browser worker and download flow remain unverified end to end. An independent
+coefficient comparison has not run.
 
 Before declaring this ready for production:
 

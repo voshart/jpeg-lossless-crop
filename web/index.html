@@ -41,7 +41,7 @@
           <label>Width <input id="width" type="number" min="1" step="1" value="1" required></label>
           <label>Height <input id="height" type="number" min="1" step="1" value="1" required></label>
         </div>
-        <p class="note">Pixels in display orientation. Typed values round outward to JPEG blocks.</p>
+        <p class="note">Pixels in display orientation. Block-start edges align; opposite edges are pixel-exact.</p>
         <button id="reset" type="button" class="wide">Select whole image</button>
       </fieldset>
       <fieldset id="export-controls" class="panel-section" disabled>
@@ -53,7 +53,7 @@
       </fieldset>
       <details class="panel-section">
         <summary>About cropping</summary>
-        <p class="note">The JPEG engine copies retained transform coefficients without re-encoding pixels. Crop edges snap to JPEG blocks.</p>
+        <p class="note">The JPEG engine copies retained transform coefficients without re-encoding pixels. JPEG block-start edges align; opposite edges can end on any pixel.</p>
         <p class="note">Not a secure-redaction tool: boundary blocks can retain information outside the visible edge. Keeping original metadata can retain GPS coordinates and an uncropped thumbnail.</p>
       </details>
     </aside>
@@ -114,7 +114,7 @@
         </div>
         <details class="interaction-details">
           <summary>Controls</summary>
-          <p id="interaction-help">Hover to preview snapping. Drag to draw, then drag inside to move or use a handle to resize. Arrow keys move a focused crop or resize a focused handle; Shift moves 10 steps. Escape cancels a drag. Use Draw new to replace the selection. Zoom changes only the preview; use scrollbars to pan, or Fit to see the whole image.</p>
+          <p id="interaction-help">Hover to preview a pixel position. Drag to draw, then drag inside to move or use a handle to resize. Arrow keys move a focused crop by JPEG blocks. A focused handle moves a constrained edge by blocks or a free edge by pixels; Shift moves 10 steps. Escape cancels a drag. Use Draw new to replace the selection. Zoom changes only the preview; use scrollbars to pan, or Fit to see the whole image.</p>
         </details>
       </div>
     </section>

@@ -1,63 +1,37 @@
-# Crop interaction update
+# Crop interaction
+
+## JPEG boundary model
+
+The crop origin in raw JPEG coordinates stays on the source iMCU grid. The raw
+right and bottom boundaries can end on any pixel because the JPEG frame size can
+stop inside the final encoded block. The remaining data in those edge blocks is
+still present. This is a valid standalone JPEG, not an SVG or masked preview.
+
+EXIF orientation can move the constrained raw top/left boundaries to any pair
+of displayed sides. Coordinate inputs and pointer controls convert through raw
+coordinates so the selected overlay matches the output dimensions.
 
 ## Controls
 
-- **Draw new:** hover shows the nearest block-aligned intersection and its X/Y
-  coordinates before pressing. Dragging uses that same start point and snaps the
-  other corner continuously. Release switches to Adjust. A click without a drag
-  keeps the previous crop. Dragging outside a crop in Adjust also draws a new one.
-- **Adjust:** drag inside to move without changing dimensions; use the eight edge
-  and corner handles to resize. The opposite edges remain fixed.
-- Focus the workspace and use arrow keys to move one JPEG block at a time. Focus
-  a handle and use arrow keys to resize that edge/corner by one available grid
-  step. Shift uses ten steps. Escape, pointer cancellation, or lost capture
-  restores the crop from before the drag.
-- The coordinate inputs still expand outwards to block boundaries. The pointer
-  interface deliberately chooses nearest boundaries instead. Neither changes
-  jpegtran or permits a lossy fallback.
+- Draw uses whole-pixel pointer coordinates. The block-constrained sides expand
+  outward; the opposite sides retain the chosen pixel positions.
+- Resize handles keep their opposite edges fixed. A handle on a free side moves
+  by pixels; a handle on a constrained side snaps to the nearest iMCU boundary.
+- Moving a crop translates its raw origin in whole iMCU steps without changing
+  its dimensions. A crop with a partial final block can still move.
+- Arrow keys move the selected crop by one iMCU step. A focused handle moves its
+  edge by one block or one pixel according to that edge. Shift uses ten steps.
+  Escape, pointer cancellation, or lost capture restores the previous crop.
 
-Snapping uses the original JPEG's sampling and EXIF transform. Mirrored/rotated
-images with partial edge blocks may have a display grid that does not start at
-zero. The crosshair and exported selection use the same transformed boundaries.
-These boundaries describe this app's block-aligned crop model, not every crop
-rectangle that the underlying jpegtran command could represent.
-
-When a crop includes a partial source-edge block, moving along that axis is
-locked to preserve its dimensions and the existing outward-aligned model. Resize
-that edge onto a full block first. The other axis can still move. Moving a crop
-must never silently grow or shrink it.
-
-## Scope
-
-Only HTML, CSS, JavaScript interaction code, tests, and this note changed. No
-worker, parser, coefficient-crop implementation, metadata logic, generated WASM,
-compiler script, hosting settings, or dependency changes. No engine rebuild is
-needed for this update. Keep using the locally built files under web/vendor/.
-
-The owner reported a successful local Emscripten build and working JPEG export
-on 2026-09-25. That is user-reported validation, not an independent engine audit.
+The worker still passes original JPEG bytes to source-built `jpegtran -crop` and
+checks the output dimensions. No pixel encoder or fallback is used.
 
 ## Validation
 
-`node --test tests/*.test.js`: 15 tests passed (the existing eight plus seven new
-interaction tests). Coverage includes nearest boundaries, partial source edges,
-all EXIF orientations, asymmetric sampling grids, draw directions, fixed opposite
-edges during resizing, size-preserving movement, and output-snap idempotence.
-
-Chromium in-memory checks with actual JPEG fixtures passed: pre-click preview,
-drawing, moving, resizing, keyboard nudging, Escape rollback, no-op clicks,
-EXIF orientations 1-8, 390px dark layout without horizontal overflow, and real
-Chromium touch-event dragging/cancellation. No page errors were recorded.
-
-This environment blocks local HTTP browser navigation. Those UI checks therefore
-used the actual module bodies together in an in-memory test document, not real
-HTTP module delivery. Production response CSP, HTTP module loading, and actual
-WASM export were not rerun. Check those paths in WSL after pulling the update.
-
-## Keeping the compiled engine
-
-Generated files in web/vendor/ are currently ignored by Git. Back up that whole
-directory (including the notices and build-info.json) before removing build tools.
-Do not delete it or use git clean -fdx as part of compiler cleanup. The project
-.build/ directory and the separately installed jpeg-crop-emsdk directory are not
-runtime dependencies. A future engine update will require a build toolchain again.
+The geometry and interaction tests cover all eight EXIF orientations, exact free
+edges, alignment of constrained edges, drag direction, resize and move bounds,
+and output-snap idempotence. A direct run of the committed WASM engine cropped
+libjpeg-turbo's 227 × 149 `testorig.jpg` to 53 × 37 pixels at raw offset 16,16.
+The engine returned status 0 and the output header reported those exact
+requested dimensions. Browser export and independent coefficient comparison
+remain to be verified; see `TESTING.md`.

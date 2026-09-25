@@ -73,7 +73,7 @@ async function openFile(file) {
     $('width').max = String(info.displayWidth); $('height').max = String(info.displayHeight);
     preview.reset(); updateSelection({ x: 0, y: 0, width: info.displayWidth, height: info.displayHeight });
     cropUI.setMode('draw');
-    status('Move over the image to preview snapping, then drag to draw a crop.');
+    status('Drag to draw. JPEG block-start edges align; opposite edges stay pixel-exact.');
   } catch (e) {
     if (url && url !== previewUrl) URL.revokeObjectURL(url);
     error(e.message); status(source ? 'Previous JPEG is still selected.' : 'No JPEG loaded.');
@@ -123,7 +123,7 @@ function readCoordinates() {
 }
 for (const key of fields) $(key).addEventListener('change', () => {
   if (!info || busy) return;
-  try { error(); updateSelection(readCoordinates()); cropUI.setMode('adjust'); status('Selection aligned to JPEG blocks.'); }
+  try { error(); updateSelection(readCoordinates()); cropUI.setMode('adjust'); status('Selection updated. JPEG block-start edges are aligned.'); }
   catch (e) { error(e.message); }
 });
 $('reset').addEventListener('click', () => {

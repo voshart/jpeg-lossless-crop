@@ -1,4 +1,4 @@
-import { displayToRaw, rawToDisplay } from './geometry.js';
+import { displayToRaw, rawToDisplay, snapCrop } from './geometry.js';
 
 const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
 
@@ -29,16 +29,31 @@ function nearestBoundary(value, grid, low = 0, high = grid.limit) {
   return candidates[0];
 }
 
-export function snapPoint(point, info) {
-  return { x: nearestBoundary(point.x, displayGrid(info, 'x')),
-    y: nearestBoundary(point.y, displayGrid(info, 'y')) };
+function pixelPoint(point, info) {
+  if (![point.x, point.y].every(Number.isFinite)) throw new Error('A finite pointer coordinate is required.');
+  return { x: clamp(Math.round(point.x), 0, info.displayWidth),
+    y: clamp(Math.round(point.y), 0, info.displayHeight) };
+}
+
+// The raw top/left block origin can appear on either displayed side after EXIF orientation.
+function alignedDisplayEdge(info, axis, side) {
+  const origin = rawToDisplay({ x: 0, y: 0, width: 0, height: 0 }, info);
+  return side === 'low' ? origin[axis] === 0 : origin[axis] === displayGrid(info, axis).limit;
+}
+
+function nearestEdge(value, info, axis, side, low, high) {
+  if (alignedDisplayEdge(info, axis, side)) {
+    return nearestBoundary(value, displayGrid(info, axis), low, high);
+  }
+  if (!Number.isFinite(value)) throw new Error('A finite pointer coordinate is required.');
+  return clamp(Math.round(value), low, high);
 }
 
 export function drawCrop(start, end, info) {
-  const a = snapPoint(start, info), b = snapPoint(end, info);
+  const a = pixelPoint(start, info), b = pixelPoint(end, info);
   if (a.x === b.x || a.y === b.y) return null;
-  return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y),
-    width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) };
+  return snapCrop({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y),
+    width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) }, info).display;
 }
 
 export function handlePoint(rect, handle) {
@@ -48,23 +63,20 @@ export function handlePoint(rect, handle) {
 
 export function resizeCrop(rect, handle, point, info) {
   let left = rect.x, right = rect.x + rect.width, top = rect.y, bottom = rect.y + rect.height;
-  if (handle.includes('w')) left = nearestBoundary(point.x, displayGrid(info, 'x'), 0, right - 1);
-  if (handle.includes('e')) right = nearestBoundary(point.x, displayGrid(info, 'x'), left + 1);
-  if (handle.includes('n')) top = nearestBoundary(point.y, displayGrid(info, 'y'), 0, bottom - 1);
-  if (handle.includes('s')) bottom = nearestBoundary(point.y, displayGrid(info, 'y'), top + 1);
+  if (handle.includes('w')) left = nearestEdge(point.x, info, 'x', 'low', 0, right - 1);
+  if (handle.includes('e')) right = nearestEdge(point.x, info, 'x', 'high', left + 1, info.displayWidth);
+  if (handle.includes('n')) top = nearestEdge(point.y, info, 'y', 'low', 0, bottom - 1);
+  if (handle.includes('s')) bottom = nearestEdge(point.y, info, 'y', 'high', top + 1, info.displayHeight);
   return { x: left, y: top, width: right - left, height: bottom - top };
 }
 
-/** Translate in whole raw blocks, keeping dimensions fixed (never grow a crop). */
+/** Translate in whole raw blocks, keeping the crop dimensions fixed. */
 export function moveCrop(rect, delta, info) {
   const raw = displayToRaw(rect, info);
   const moved = displayToRaw({ ...rect, x: rect.x + delta.x, y: rect.y + delta.y }, info);
   for (const [axis, size, block, limit] of [
     ['x', 'width', info.mcuWidth, info.width], ['y', 'height', info.mcuHeight, info.height],
   ]) {
-    // A short block can only be at the image edge in this outward-aligned model.
-    // Lock that axis rather than silently changing the selection's size.
-    if (raw[size] % block !== 0) continue;
     raw[axis] = clamp(Math.round(moved[axis] / block) * block, 0,
       Math.floor((limit - raw[size]) / block) * block);
   }
@@ -133,7 +145,7 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
   function hover(event) {
     if (!enabled || event.pointerType === 'touch') { hidePreview(); return; }
     const { info, crop } = state(), kind = action(event);
-    if (kind === 'draw') showPoint(snapPoint(position(event), info));
+    if (kind === 'draw') showPoint(pixelPoint(position(event), info), 'Pixel');
     else if (kind === 'move') {
       preview.hidden = true;
       readout.textContent = `Move crop · X ${crop.display.x} · Y ${crop.display.y} px`;
@@ -146,7 +158,7 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
     let rect;
     if (drag.kind === 'draw') {
       rect = drawCrop(drag.anchor, point, info);
-      showPoint(snapPoint(point, info));
+      showPoint(pixelPoint(point, info), 'Pixel');
     } else if (drag.kind === 'move') {
       rect = moveCrop(drag.previous, { x: point.x - drag.start.x, y: point.y - drag.start.y }, info);
       preview.hidden = true;
@@ -178,18 +190,12 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
     if (!enabled || drag || event.button !== 0 || event.isPrimary === false) return;
     event.preventDefault(); clearError();
     const { info, crop } = state(), point = position(event), kind = action(event);
-    drag = { id: event.pointerId, kind, start: point, anchor: snapPoint(point, info),
+    drag = { id: event.pointerId, kind, start: point, anchor: pixelPoint(point, info),
       previous: { ...crop.display }, clientX: event.clientX, clientY: event.clientY, changed: false };
     stage.dataset.drag = kind;
     (event.target.closest('[data-handle]') || stage).focus({ preventScroll: true });
     stage.setPointerCapture(event.pointerId);
-    if (kind === 'draw') showPoint(drag.anchor);
-    if (kind === 'move') {
-      const raw = crop.raw;
-      if (raw.width % info.mcuWidth || raw.height % info.mcuHeight) {
-        status('A partial image-edge block locks movement on that axis. Resize that edge to move it.');
-      }
-    }
+    if (kind === 'draw') showPoint(drag.anchor, 'Pixel');
   });
   stage.addEventListener('pointermove', event => drag ? changeDrag(event) : hover(event));
   stage.addEventListener('pointerup', event => {
@@ -210,7 +216,11 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
     if (handle) {
       if (!axesFor(handle).includes(axis)) return;
       const point = handlePoint(crop.display, handle);
-      point[axis] = nextBoundary(point[axis], direction, count, grid);
+      const side = axis === 'x' ? (handle.includes('w') ? 'low' : 'high')
+        : (handle.includes('n') ? 'low' : 'high');
+      point[axis] = alignedDisplayEdge(info, axis, side)
+        ? nextBoundary(point[axis], direction, count, grid)
+        : clamp(point[axis] + direction * count, 0, grid.limit);
       apply(resizeCrop(crop.display, handle, point, info));
     } else {
       apply(moveCrop(crop.display, { x: axis === 'x' ? grid.step * direction * count : 0,

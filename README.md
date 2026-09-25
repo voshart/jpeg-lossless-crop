@@ -12,8 +12,10 @@ app has no upload endpoint, analytics, external fonts, or CDN dependencies.
 ## Use
 
 Open a JPEG, then drag on the preview or enter X, Y, width, and height. The
-selection expands to JPEG block boundaries and is clipped to the image edges.
-The overlay and fields show the resulting crop area. Save downloads a new JPEG.
+JPEG block-start edges align to the compression grid, while the opposite
+edges can end on any pixel. EXIF orientation can change which displayed sides
+are block-constrained. The overlay and fields show the resulting crop area.
+Save downloads a new JPEG.
 
 The app accepts 8-bit baseline, extended sequential, and progressive DCT JPEGs,
 including grayscale and EXIF orientations 1–8. The limit is 50 MiB and 100

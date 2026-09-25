@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rawToDisplay, snapCrop } from '../web/src/geometry.js';
-import { snapPoint, drawCrop, resizeCrop, moveCrop, handlePoint } from '../web/src/crop-interaction.js';
+import { drawCrop, resizeCrop, moveCrop, handlePoint } from '../web/src/crop-interaction.js';
 
 function info(orientation = 1, mcuWidth = 16, mcuHeight = 8) {
   return { width: 101, height: 79, mcuWidth, mcuHeight, orientation,
@@ -12,33 +12,14 @@ function assertAligned(rect, image) {
   assert.deepEqual(snapCrop(rect, image).display, rect, 'Export must not resnap a displayed selection');
 }
 
-test('hover finds the nearest boundary including short image-edge blocks', () => {
-  assert.deepEqual(snapPoint({x:25,y:18}, info()), {x:32,y:16});
-  assert.deepEqual(snapPoint({x:100,y:78}, info()), {x:101,y:79});
-  assert.deepEqual(snapPoint({x:-20,y:900}, info()), {x:0,y:79});
-  assert.deepEqual(snapPoint({x:8,y:4}, info()), {x:0,y:0});
-  assert.throws(() => snapPoint({x:NaN,y:0}, info()));
-});
-test('hover uses the true transformed grid, not multiples from displayed zero', () => {
-  const image = info(2);
-  assert.deepEqual(snapPoint({x:6,y:18}, image), {x:5,y:16});
-  for (let o=1;o<=8;o++) for (const sampling of [[8,8],[16,8],[8,16],[16,16]]) {
-    const image=info(o,...sampling);
-    const points=[];
-    for (let x=0;x<101;x+=image.mcuWidth) for(let y=0;y<79;y+=image.mcuHeight) {
-      const r=rawToDisplay({x,y,width:0,height:0},image); points.push({x:r.x,y:r.y});
-    }
-    for (const point of points) assert.deepEqual(snapPoint(point,image),point);
-  }
-});
-test('draw starts at the previewed intersection and works in all drag directions', () => {
+test('draw keeps pixel-exact free edges in all drag directions', () => {
   for (let o=1;o<=8;o++) {
-    const image=info(o), a=snapPoint({x:20,y:19},image), b=snapPoint({x:68,y:56},image);
+    const image=info(o), a={x:20,y:19}, b={x:68,y:56};
     const rect=drawCrop(a,b,image); assertAligned(rect,image);
     assert.deepEqual(drawCrop(b,a,image),rect);
-    assert.equal(rect.x,Math.min(a.x,b.x)); assert.equal(rect.y,Math.min(a.y,b.y));
-    assert.equal(rect.x+rect.width,Math.max(a.x,b.x));
-    assert.equal(rect.y+rect.height,Math.max(a.y,b.y));
+    const raw=snapCrop(rect,image).raw;
+    const requested=snapCrop({x:20,y:19,width:48,height:37},image).raw;
+    assert.deepEqual(raw,requested);
     assert.equal(drawCrop(a,a,image),null);
   }
 });
@@ -66,12 +47,31 @@ test('move preserves size and stays in bounds for every EXIF orientation', () =>
     }
   }
 });
-test('partial edge block locks its move axis instead of changing crop size', () => {
+test('a partial final block can move in whole MCU steps without changing size', () => {
   const image=info(),r={x:80,y:16,width:21,height:24};
-  assert.deepEqual(moveCrop(r,{x:-16,y:16},image),{x:80,y:32,width:21,height:24});
+  assert.deepEqual(moveCrop(r,{x:-16,y:16},image),{x:64,y:32,width:21,height:24});
   for (let o=1;o<=8;o++) {
-    const image=info(o),r=rawToDisplay({x:80,y:64,width:21,height:15},image);
-    assert.deepEqual(moveCrop(r,{x:-50,y:-50},image),r);
+    const image=info(o),r=rawToDisplay({x:32,y:16,width:21,height:15},image);
+    const out=moveCrop(r,{x:50,y:50},image);
+    assertAligned(out,image);
+    assert.equal(out.width,r.width); assert.equal(out.height,r.height);
+  }
+});
+test('resize uses single pixels on free edges and blocks on constrained edges', () => {
+  const normal=info(), r={x:16,y:16,width:48,height:32};
+  assert.deepEqual(resizeCrop(r,'se',{x:53,y:39},normal),{x:16,y:16,width:37,height:23});
+  assert.deepEqual(resizeCrop(r,'nw',{x:23,y:21},normal),{x:16,y:24,width:48,height:24});
+  const mirrored=info(2), m=rawToDisplay(r,mirrored);
+  assert.equal(resizeCrop(m,'w',{x:43,y:32},mirrored).x,43);
+  const east=resizeCrop(m,'e',{x:70,y:32},mirrored);
+  assert.equal(east.x+east.width,69);
+  for (let o=1;o<=8;o++) {
+    const image=info(o);
+    const origin=rawToDisplay({x:0,y:0,width:0,height:0},image);
+    const handle=(origin.y===0?'s':'n')+(origin.x===0?'e':'w');
+    const base=rawToDisplay({x:16,y:16,width:48,height:32},image);
+    const exact=rawToDisplay({x:16,y:16,width:37,height:23},image);
+    assert.deepEqual(resizeCrop(base,handle,handlePoint(exact,handle),image),exact);
   }
 });
 test('edge and corner anchor positions are correct', () => {
