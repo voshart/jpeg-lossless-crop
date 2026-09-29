@@ -18,9 +18,17 @@ corner to refine the far corner by pixels; on an unrotated image, that is the
 lower-right corner. EXIF orientation can change which displayed corner is free.
 The overlay and fields show the resulting crop area. Orange stripes mark source
 pixels that may still be recoverable from the saved JPEG. Keep private information
-out of this area. The Turn left and Turn right buttons rotate the source before
-cropping and reset the selection. If
-turning requires removing a thin edge strip, the app asks before doing so. Save
+out of this area.
+
+Scroll over the preview to zoom toward the pointer. On a touch screen, one finger
+crops; pinch or drag with two fingers to zoom and pan. Shortly after you draw a
+small crop, the preview zooms toward it; any touch, scroll or zoom change first
+cancels this. Use the Zoom menu for Fit or a fixed scale. The output-size readout
+updates about a second after crop changes. Numeric crop fields are under
+Advanced coordinates. On phones, open the controls from the top bar.
+
+The Turn left and Turn right buttons rotate the source before cropping and reset
+the selection. If turning requires removing a thin edge strip, the app asks before doing so. Save
 downloads a new JPEG.
 
 The app accepts 8-bit baseline, extended sequential, and progressive DCT JPEGs,

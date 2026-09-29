@@ -12,7 +12,8 @@ self.onmessage = async ({ data }) => {
     const input = new Uint8Array(data.bytes);
     const info = parseJpeg(input);
     const rotating = data.operation === 'rotate';
-    if (!rotating && data.operation !== 'crop') throw new Error('Unknown JPEG operation.');
+    const measuring = data.operation === 'measure';
+    if (!rotating && !measuring && data.operation !== 'crop') throw new Error('Unknown JPEG operation.');
     const plan = rotating ? rotationPlan(info, data.direction) : null;
     const crop = rotating ? null : snapCrop(data.crop, info);
     let createJpegtran;
@@ -48,9 +49,13 @@ self.onmessage = async ({ data }) => {
     if (resultInfo.width !== expectedWidth || resultInfo.height !== expectedHeight || resultInfo.orientation !== info.orientation) {
       throw new Error('The output dimensions or orientation do not match the request.');
     }
-    // Copy only the output bytes; never expose the engine heap or original file.
-    const result = output.slice().buffer;
-    self.postMessage({ ok: true, bytes: result, crop: crop?.display }, [result]);
+    if (measuring) {
+      self.postMessage({ ok: true, size: output.byteLength });
+    } else {
+      // Copy only the output bytes; never expose the engine heap or original file.
+      const result = output.slice().buffer;
+      self.postMessage({ ok: true, bytes: result, crop: crop?.display }, [result]);
+    }
   } catch (error) {
     self.postMessage({ ok: false, error: error instanceof Error ? error.message : String(error) });
   } finally {

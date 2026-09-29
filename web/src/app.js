@@ -3,9 +3,12 @@ import { snapCrop, rawToDisplay, retainedEdgeRects } from './geometry.js';
 import { createCropInteraction } from './crop-interaction.js';
 import { createPreview } from './preview.js';
 import { rotationPlan } from './rotation.js';
+import { createSizeEstimate } from './size-estimate.js';
 
 const $ = id => document.getElementById(id);
 const fields = ['x', 'y', 'width', 'height'];
+// Phones in either orientation use the overlay drawer (see style.css).
+const compactLayout = matchMedia('(max-width: 820px), (max-height: 540px) and (pointer: coarse)');
 let source = null, info = null, crop = null, previewUrl = null;
 let busy = false, pendingCancel = null, loadSequence = 0;
 const downloads = new Set();
@@ -14,6 +17,7 @@ function error(message = '') { $('error').textContent = message; $('error').hidd
 function status(message) { $('status').textContent = message; }
 function setBusy(value) {
   busy = value;
+  if (value) { sizeEstimate.cancel(); preview.cancelFocus(); }
   $('open').disabled = value;
   $('open-empty').disabled = value;
   for (const id of ['rotate-left', 'rotate-right']) $(id).disabled = value || !source;
@@ -25,6 +29,7 @@ function setBusy(value) {
   for (const id of ['cancel', 'cancel-toolbar']) $(id).hidden = !value || !pendingCancel;
   $('stage').setAttribute('aria-busy', String(value));
   cropUI.setEnabled(Boolean(source) && !value);
+  if (!value) sizeEstimate.schedule();
 }
 function updateSelection(rect) {
   crop = snapCrop(rect, info);
@@ -46,21 +51,27 @@ function updateSelection(rect) {
     });
   }
   $('retained-note').hidden = retained.length === 0;
-  $('crop-size').textContent = `${r.width} × ${r.height} px`;
+  sizeEstimate.schedule();
 }
 const cropUI = createCropInteraction({
   stage: $('stage'), state: () => ({ info, crop }),
   apply: updateSelection, status, clearError: error,
+  onDrawn: () => preview.scheduleFocus(() => crop?.display),
 });
 const preview = createPreview({
   viewport: $('drop-area'), space: $('stage-space'), stage: $('stage'),
   control: $('zoom'), getInfo: () => info,
+  onGesture: () => cropUI.cancelDrag(), onFocus: () => cropUI.clearHover(),
 });
 const fitPreview = () => preview.render();
+const sizeEstimate = createSizeEstimate({
+  readout: $('size-readout'),
+  getState: () => ({ source, crop: crop && { ...crop.display }, keepMetadata: $('keep-metadata').checked, busy }),
+});
 async function openFile(file) {
   if (busy || !file) return;
   const sequence = ++loadSequence;
-  error(); setBusy(true); status('Reading JPEG…');
+  sizeEstimate.reset(); error(); setBusy(true); status('Reading JPEG…');
   let url;
   try {
     if (file.size > MAX_FILE_BYTES) throw new Error('This starter accepts JPEGs up to 50 MiB.');
@@ -89,7 +100,9 @@ async function openFile(file) {
     cropUI.setMode('draw');
     const freeCorner = rawToDisplay({ x: info.width, y: info.height, width: 0, height: 0 }, info);
     const cornerName = `${freeCorner.y === 0 ? 'upper' : 'lower'} ${freeCorner.x === 0 ? 'left' : 'right'}`;
-    status(`Hover for block placement. Drag toward ${cornerName} for pixel refinement.`);
+    status(matchMedia('(hover: hover)').matches
+      ? `Hover for block placement. Drag toward ${cornerName} for pixel refinement.`
+      : `Drag on the image to select a crop. Drag toward ${cornerName} for pixel refinement.`);
     return true;
   } catch (e) {
     if (url && url !== previewUrl) URL.revokeObjectURL(url);
@@ -99,20 +112,30 @@ async function openFile(file) {
 }
 $('open').addEventListener('click', () => $('file').click());
 $('open-empty').addEventListener('click', () => { if (!busy) $('file').click(); });
-// Match the optimizer's collapsible settings panel, without storing preferences.
-$('panel-toggle').addEventListener('click', () => {
-  const panel = $('side-panel'), toggle = $('panel-toggle');
-  const collapsed = !panel.hidden;
-  const slot = $('panel-toggle-slot');
+// The mobile preview opens unobstructed; the controls remain one tap away.
+function setPanelCollapsed(collapsed, focus = false) {
+  const panel = $('side-panel'), toggle = $('panel-toggle'), slot = $('panel-toggle-slot');
   slot.hidden = !collapsed;
   (collapsed ? slot : $('panel-header')).append(toggle);
   panel.hidden = collapsed;
+  $('panel-scrim').hidden = collapsed || !compactLayout.matches;
   document.body.classList.toggle('sidebar-collapsed', collapsed);
   toggle.setAttribute('aria-expanded', String(!collapsed));
   toggle.setAttribute('aria-label', collapsed ? 'Show controls' : 'Hide controls');
   toggle.title = collapsed ? 'Show controls' : 'Hide controls';
-  toggle.focus({ preventScroll: true });
+  if (focus) toggle.focus({ preventScroll: true });
   requestAnimationFrame(fitPreview);
+}
+if (compactLayout.matches) setPanelCollapsed(true);
+// Rotating a tablet or resizing a window across the breakpoint: phones start
+// with the drawer closed, the desktop layout with the sidebar open.
+compactLayout.addEventListener('change', event => setPanelCollapsed(event.matches));
+$('panel-toggle').addEventListener('click', () => setPanelCollapsed(!$('side-panel').hidden, true));
+$('panel-scrim').addEventListener('click', () => setPanelCollapsed(true, true));
+window.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && compactLayout.matches && !$('side-panel').hidden) {
+    setPanelCollapsed(true, true);
+  }
 });
 $('file').addEventListener('change', () => { const file = $('file').files[0]; $('file').value = ''; openFile(file); });
 for (const type of ['dragenter', 'dragover']) {
@@ -146,13 +169,14 @@ for (const key of fields) $(key).addEventListener('change', () => {
 });
 $('reset').addEventListener('click', () => {
   error(); updateSelection({ x: 0, y: 0, width: info.displayWidth, height: info.displayHeight });
-  cropUI.setMode('draw');
+  cropUI.setMode('draw'); preview.reset();
   status('Whole image selected. Drag to draw a new crop.');
 });
 $('keep-metadata').addEventListener('change', () => {
   $('metadata-note').textContent = $('keep-metadata').checked
     ? 'May include GPS, comments, and an uncropped thumbnail. Do not use this mode to hide sensitive content.'
     : 'Removes EXIF, GPS, comments, and thumbnails. Keeps the ICC colour profile and display orientation.';
+  sizeEstimate.schedule();
 });
 
 function runJpegWorker(bytes, request, action) {
@@ -225,6 +249,7 @@ for (const id of ['save', 'save-toolbar']) $(id).addEventListener('click', saveC
 new ResizeObserver(fitPreview).observe($('drop-area'));
 window.addEventListener('resize', fitPreview);
 window.addEventListener('pagehide', () => {
+  sizeEstimate.cancel();
   pendingCancel?.();
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   for (const url of downloads) URL.revokeObjectURL(url);

@@ -12,7 +12,8 @@
   Fit respects both workspace dimensions and does not enlarge small images.
 - Oversized previews use native scrolling. Zoom changes start at the top-left;
   Fit returns the whole image to view. Loading a new image resets to Fit.
-  There is no custom wheel/pinch gesture, drag-to-pan mode, or zoom dependency.
+  There is no drag-to-pan mode or zoom dependency. A later update added
+  pointer-centered wheel zoom and a compact mobile controls drawer.
 - Zoom only resizes the existing image element and overlays. Crop coordinates,
   original JPEG bytes, output dimensions and metadata choices are unchanged.
   Existing pointer conversion uses the stage's current bounding rectangle, so

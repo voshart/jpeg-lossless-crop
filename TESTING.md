@@ -11,9 +11,14 @@
   orientations 1–8 load, drag selection aligns to blocks, light/dark styles
   render, and the 390px mobile layout has no horizontal overflow.
 
-The browser checks used an in-memory HTML/CSS/JS harness because this execution
-environment blocked local HTTP navigation. They did not exercise the production
-CSP, module loading over HTTP, the worker, downloads, or an actual JPEG crop.
+The earlier browser checks used an in-memory HTML/CSS/JS harness because that
+execution environment blocked local HTTP navigation. They did not exercise the
+production CSP, module loading over HTTP, the worker, or downloads. A later
+local Chromium run loaded the served app over HTTP and measured a generated
+1200 × 800 JPEG through the real worker: 54.8 KB for the whole image and
+14.8 KB for a 600 × 400 crop after the one-second debounce. The mobile and
+desktop layouts were also inspected with that fixture. This measured output
+size but did not test the download path or compare coefficients independently.
 
 ## Not yet verified
 
@@ -23,8 +28,7 @@ The committed WASM engine returned a 53 × 37 JPEG from libjpeg-turbo
 `testorig.jpg` using a 53 × 37 crop at raw offset 16,16. Direct engine runs
 also turned the 227 × 149 fixture to 144 × 227 with a trimmed right turn and
 149 × 224 with a trimmed left turn; a 32 × 48 crop turned perfectly to 48 × 32.
-That verifies direct cropping and turning in the engine. The browser worker,
-rotation preview, and download flow remain unverified end to end. An independent
+That verifies direct cropping and turning in the engine. The browser download flow and rotation preview remain unverified end to end. An independent
 coefficient comparison has not run. The orange retained-edge indicator has
 geometry tests, but its appearance has not been checked in a browser.
 

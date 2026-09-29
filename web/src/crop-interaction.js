@@ -108,7 +108,7 @@ function nextBoundary(value, direction, count, grid) {
 }
 
 /** Native pointer/keyboard controls. No JPEG engine or encoding code lives here. */
-export function createCropInteraction({ stage, state, apply, status, clearError }) {
+export function createCropInteraction({ stage, state, apply, status, clearError, onDrawn = () => {} }) {
   const $ = id => document.getElementById(id);
   const adjustment = $('adjustment'), preview = $('snap-preview'), readout = $('pointer-readout');
   const drawButton = $('draw-mode'), adjustButton = $('adjust-mode');
@@ -117,7 +117,8 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
 
   function hidePreview() {
     preview.hidden = true;
-    readout.textContent = enabled ? 'Move over the image to preview the next boundary.' : '';
+    readout.textContent = enabled && matchMedia('(hover: hover)').matches
+      ? 'Move over the image to preview the next boundary.' : '';
   }
   function setMode(value) {
     mode = value;
@@ -191,17 +192,18 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
     if (rect) { apply(rect); drag.changed = true; }
     else if (drag.changed) { apply(drag.previous); drag.changed = false; }
   }
-  function finish(cancelled = false) {
+  function finish(cancelled = false, quiet = false) {
     if (!drag) return;
     const last = drag;
     drag = null;
     delete stage.dataset.drag;
-    if (cancelled) apply(last.previous);
+    if (cancelled && last.changed) apply(last.previous);
     if (stage.hasPointerCapture(last.id)) stage.releasePointerCapture(last.id);
     if (!cancelled && last.changed) {
       setMode('adjust');
       status('Drag inside to move, or use the edge handles to resize.');
-    } else if (cancelled) status('Adjustment cancelled. Previous crop restored.');
+      if (last.kind === 'draw') onDrawn();
+    } else if (cancelled && !quiet) status('Adjustment cancelled. Previous crop restored.');
     hidePreview();
   }
   stage.addEventListener('pointerdown', event => {
@@ -211,7 +213,8 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
     drag = { id: event.pointerId, kind, start: point, anchor: snapPoint(point, info),
       previous: { ...crop.display }, clientX: event.clientX, clientY: event.clientY, changed: false };
     stage.dataset.drag = kind;
-    (event.target.closest('[data-handle]') || stage).focus({ preventScroll: true });
+    // Keyboard nudging needs focus; a touch would only draw a focus ring.
+    if (event.pointerType !== 'touch') (event.target.closest('[data-handle]') || stage).focus({ preventScroll: true });
     stage.setPointerCapture(event.pointerId);
     if (kind === 'draw') showPoint(drag.anchor);
   });
@@ -251,5 +254,6 @@ export function createCropInteraction({ stage, state, apply, status, clearError 
   drawButton.addEventListener('click', () => { setMode('draw'); status('Drag to draw a new crop at the previewed boundaries.'); });
   adjustButton.addEventListener('click', () => { setMode('adjust'); status('Drag inside to move. Drag a handle to resize.'); });
   setEnabled(false);
-  return { setEnabled, setMode };
+  // A second finger turns the gesture into zoom/pan; undo any first-finger drag.
+  return { setEnabled, setMode, cancelDrag: () => finish(true, true), clearHover: () => { if (!drag) hidePreview(); } };
 }
