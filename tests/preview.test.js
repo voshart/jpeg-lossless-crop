@@ -48,13 +48,15 @@ test('auto-zoom enlarges a small new crop to part of the view, never away from i
   assert.equal(focusScale({ x: 0, y: 0, width: 8, height: 8 }, 3.5, 800, 600), null);
   assert.ok(Number.isFinite(focusScale({ x: 0, y: 0, width: 400, height: 300 }, .1, 0, -5) ?? 0));
 });
-test('save and cancel are available outside the sidebar and share handlers', () => {
+test('one Save button and Cancel live in the workspace toolbar', () => {
   const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
   const outsidePanel = html.slice(html.indexOf('</aside>') + '</aside>'.length);
-  assert.match(outsidePanel, /id="save-toolbar"[^>]*disabled>Save crop<\/button>/);
-  assert.match(outsidePanel, /id="cancel-toolbar"/);
+  assert.match(outsidePanel, /id="save"[^>]*disabled>Save crop<\/button>/);
+  assert.match(outsidePanel, /id="cancel"/);
+  assert.equal([...html.matchAll(/<button[^>]*>\s*Save[^<]*<\/button>/g)].length, 1, 'There must be a single Save button');
+  assert.doesNotMatch(html, /save-toolbar|cancel-toolbar|Save cropped JPEG/);
   assert.match(outsidePanel, /id="zoom"[^>]*disabled/);
   const app = readFileSync(new URL('../web/src/app.js', import.meta.url), 'utf8');
-  assert.match(app, /\['save', 'save-toolbar'\][^\n]*addEventListener\('click', saveCrop\)/);
-  assert.match(app, /\['cancel', 'cancel-toolbar'\][^\n]*pendingCancel/);
+  assert.match(app, /\$\('save'\)\.addEventListener\('click', saveCrop\)/);
+  assert.match(app, /\$\('cancel'\)\.addEventListener\('click'[^\n]*pendingCancel/);
 });

@@ -1,4 +1,5 @@
 import { displayToRaw, rawToDisplay, snapCrop } from './geometry.js';
+import { constrainAspect, snapToAspect, handleAnchor, drawAnchor } from './aspect.js';
 
 const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
 
@@ -107,34 +108,38 @@ function nextBoundary(value, direction, count, grid) {
   return clamp(offset + k * step, 0, limit);
 }
 
-/** Native pointer/keyboard controls. No JPEG engine or encoding code lives here. */
-export function createCropInteraction({ stage, state, apply, status, clearError, onDrawn = () => {} }) {
+/**
+ * Native pointer/keyboard controls. No JPEG engine or encoding code lives here.
+ * One gesture set, no modes: drag outside the crop to draw a new one, inside to
+ * move it, on a handle to resize it. While the crop is the whole image there is
+ * nothing to move or resize, so the handles stay hidden.
+ */
+export function createCropInteraction({ stage, state, apply, status, clearError, onChange = () => {}, onDrawn = () => {} }) {
   const $ = id => document.getElementById(id);
   const adjustment = $('adjustment'), preview = $('snap-preview'), readout = $('pointer-readout');
-  const drawButton = $('draw-mode'), adjustButton = $('adjust-mode');
   const handles = [...adjustment.querySelectorAll('[data-handle]')];
-  let enabled = false, mode = 'draw', drag = null;
+  let enabled = false, drag = null;
 
+  function wholeImage() {
+    const { info, crop } = state();
+    return !crop || (crop.display.width === info.displayWidth && crop.display.height === info.displayHeight);
+  }
   function hidePreview() {
     preview.hidden = true;
     readout.textContent = enabled && matchMedia('(hover: hover)').matches
       ? 'Move over the image to preview the next boundary.' : '';
   }
-  function setMode(value) {
-    mode = value;
-    stage.dataset.mode = mode;
-    adjustment.hidden = !enabled || mode !== 'adjust';
-    drawButton.setAttribute('aria-pressed', String(mode === 'draw'));
-    adjustButton.setAttribute('aria-pressed', String(mode === 'adjust'));
-    hidePreview();
+  /** Show the handles only when there is a crop to adjust. */
+  function sync() {
+    adjustment.hidden = !enabled || wholeImage();
   }
   function setEnabled(value) {
     if (!value) finish(true);
     enabled = value;
-    drawButton.disabled = adjustButton.disabled = !value;
     for (const handle of handles) handle.disabled = !value;
     stage.tabIndex = value ? 0 : -1;
-    setMode(mode);
+    sync();
+    hidePreview();
   }
   function position(event) {
     const { info } = state(), box = stage.getBoundingClientRect();
@@ -142,10 +147,14 @@ export function createCropInteraction({ stage, state, apply, status, clearError,
       y: clamp((event.clientY - box.top) / box.height * info.displayHeight, 0, info.displayHeight) };
   }
   function action(event) {
-    if (mode === 'draw') return 'draw';
     const handle = event.target.closest('[data-handle]');
     if (handle) return handle.dataset.handle;
-    return adjustment.contains(event.target) ? 'move' : 'draw';
+    return !adjustment.hidden && adjustment.contains(event.target) ? 'move' : 'draw';
+  }
+  /** Hold the chosen aspect ratio, if any, around the fixed corner or edge. */
+  function constrained(rect, anchor) {
+    const { info, ratio } = state();
+    return rect && ratio ? snapToAspect(constrainAspect(rect, ratio, anchor, info), ratio, info) : rect;
   }
   function showPoint(point, label = 'Snap', axes = 'xy') {
     const { info } = state();
@@ -176,6 +185,7 @@ export function createCropInteraction({ stage, state, apply, status, clearError,
     let rect;
     if (drag.kind === 'draw') {
       rect = drawCrop(drag.anchor, point, info);
+      if (rect) rect = constrained(rect, drawAnchor(rect, drag.anchor));
       const endpoint = drawEndpoint(drag.anchor, point, info);
       showPoint(endpoint.point, endpoint.fine ? 'Pixel' : 'Snap');
     } else if (drag.kind === 'move') {
@@ -187,6 +197,7 @@ export function createCropInteraction({ stage, state, apply, status, clearError,
       const edge = handlePoint(drag.previous, drag.kind);
       rect = resizeCrop(drag.previous, drag.kind,
         { x: edge.x + point.x - drag.start.x, y: edge.y + point.y - drag.start.y }, info);
+      rect = constrained(rect, handleAnchor(drag.kind));
       showPoint(handlePoint(rect, drag.kind), 'Resize', axesFor(drag.kind));
     }
     if (rect) { apply(rect); drag.changed = true; }
@@ -200,8 +211,8 @@ export function createCropInteraction({ stage, state, apply, status, clearError,
     if (cancelled && last.changed) apply(last.previous);
     if (stage.hasPointerCapture(last.id)) stage.releasePointerCapture(last.id);
     if (!cancelled && last.changed) {
-      setMode('adjust');
-      status('Drag inside to move, or use the edge handles to resize.');
+      onChange(last.previous);
+      status('Drag inside to move, or drag a handle to resize.');
       if (last.kind === 'draw') onDrawn();
     } else if (cancelled && !quiet) status('Adjustment cancelled. Previous crop restored.');
     hidePreview();
@@ -233,6 +244,7 @@ export function createCropInteraction({ stage, state, apply, status, clearError,
     event.preventDefault(); clearError();
     const [axis, direction] = arrows[event.key], count = event.shiftKey ? 10 : 1;
     const { info, crop } = state(), grid = displayGrid(info, axis);
+    const previous = { ...crop.display };
     const handle = event.target.closest('[data-handle]')?.dataset.handle;
     if (handle) {
       if (!axesFor(handle).includes(axis)) return;
@@ -242,18 +254,17 @@ export function createCropInteraction({ stage, state, apply, status, clearError,
       point[axis] = alignedDisplayEdge(info, axis, side)
         ? nextBoundary(point[axis], direction, count, grid)
         : clamp(point[axis] + direction * count, 0, grid.limit);
-      apply(resizeCrop(crop.display, handle, point, info));
+      apply(constrained(resizeCrop(crop.display, handle, point, info), handleAnchor(handle)));
     } else {
       apply(moveCrop(crop.display, { x: axis === 'x' ? grid.step * direction * count : 0,
         y: axis === 'y' ? grid.step * direction * count : 0 }, info));
     }
-    setMode('adjust');
+    onChange(previous, { key: true });
     const r = state().crop.display;
     status(`Crop X ${r.x}, Y ${r.y}, ${r.width} × ${r.height} pixels.`);
   });
-  drawButton.addEventListener('click', () => { setMode('draw'); status('Drag to draw a new crop at the previewed boundaries.'); });
-  adjustButton.addEventListener('click', () => { setMode('adjust'); status('Drag inside to move. Drag a handle to resize.'); });
   setEnabled(false);
   // A second finger turns the gesture into zoom/pan; undo any first-finger drag.
-  return { setEnabled, setMode, cancelDrag: () => finish(true, true), clearHover: () => { if (!drag) hidePreview(); } };
+  return { setEnabled, sync, cancelDrag: () => finish(true, true),
+    clearHover: () => { if (!drag) hidePreview(); } };
 }

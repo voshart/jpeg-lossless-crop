@@ -20,6 +20,19 @@ The overlay and fields show the resulting crop area. Orange stripes mark source
 pixels that may still be recoverable from the saved JPEG. Keep private information
 out of this area.
 
+There are no draw/adjust modes. Drag on the image to draw a crop; once one
+exists, drag inside it to move, drag a handle to resize, or drag outside it to
+draw a new one. Ratio locks the crop's shape (Original, 1:1, 4:3, 3:2, 16:9 and
+their portrait forms). Only the top and left source edges must sit on JPEG block
+boundaries, so a chosen ratio is exact. Undo and Redo (Ctrl+Z, Ctrl+Shift+Z) step
+back through crops, ratio changes and turns.
+
+Turn left and Turn right (Source panel) keep your selection. If a turn must trim
+a partial edge block, an inline prompt names the edge and pixel count first.
+Turning can be undone. One Save crop button in the toolbar exports; afterwards a
+line confirms the file name, size, and whether metadata was removed or kept.
+The size readout shows the output size and how much smaller it is.
+
 Scroll over the preview to zoom toward the pointer. On a touch screen, one finger
 crops; pinch or drag with two fingers to zoom and pan. Shortly after you draw a
 small crop, the preview zooms toward it; any touch, scroll or zoom change first

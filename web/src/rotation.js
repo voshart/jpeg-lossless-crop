@@ -23,3 +23,27 @@ export function rotationPlan(info, direction) {
     : (shown.x === 0 ? 'left' : 'right');
   return { degrees, cutPixels, trim: true, edge };
 }
+
+/**
+ * Carry a display-space crop through a turn so the selection survives it.
+ * The strip a trimmed turn removes is cut from the crop first. Returns null if
+ * nothing of the crop remains. The result still needs snapCrop (block alignment).
+ */
+export function rotateDisplayRect(rect, info, direction, plan) {
+  if (!['left', 'right'].includes(direction)) throw new Error('Choose a left or right turn.');
+  let left = rect.x, top = rect.y, right = rect.x + rect.width, bottom = rect.y + rect.height;
+  let width = info.displayWidth, height = info.displayHeight;
+  if (plan.trim) {
+    const cut = plan.cutPixels;
+    if (plan.edge === 'left') { left -= cut; right -= cut; width -= cut; }
+    else if (plan.edge === 'right') width -= cut;
+    else if (plan.edge === 'top') { top -= cut; bottom -= cut; height -= cut; }
+    else height -= cut;
+  }
+  left = Math.max(0, left); top = Math.max(0, top);
+  right = Math.min(width, right); bottom = Math.min(height, bottom);
+  if (right <= left || bottom <= top) return null;
+  return direction === 'right'
+    ? { x: height - bottom, y: left, width: bottom - top, height: right - left }
+    : { x: top, y: width - right, width: bottom - top, height: right - left };
+}

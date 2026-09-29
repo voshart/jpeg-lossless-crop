@@ -56,8 +56,6 @@
         <legend>Export</legend>
         <label class="check"><input id="keep-metadata" type="checkbox"> Keep original metadata</label>
         <p id="metadata-note" class="note">Removes EXIF, GPS, comments, and thumbnails. Keeps the ICC colour profile and display orientation.</p>
-        <button id="save" type="button" class="primary wide">Save cropped JPEG</button>
-        <button id="cancel" type="button" class="wide" hidden>Cancel</button>
       </fieldset>
       <details class="panel-section">
         <summary>About cropping</summary>
@@ -70,11 +68,24 @@
         <div id="panel-toggle-slot" hidden></div>
         <span id="view-label">Preview</span>
         <span class="mobile-brand">JPEG <span>/ Lossless crop</span></span>
-        <div class="crop-tools" role="group" aria-label="Crop interaction">
-          <button id="draw-mode" type="button" aria-pressed="true" disabled>Draw new</button>
-          <button id="adjust-mode" type="button" aria-pressed="false" disabled>Adjust</button>
+        <div class="history-tools" role="group" aria-label="History">
+          <button id="undo" type="button" title="Undo (Ctrl+Z)" disabled>Undo</button>
+          <button id="redo" type="button" title="Redo (Ctrl+Shift+Z)" disabled>Redo</button>
         </div>
-        <label class="zoom-control"><span class="zoom-label">Zoom</span>
+        <label class="bar-select aspect-control"><span class="tool-label">Ratio</span>
+          <select id="aspect" aria-label="Crop aspect ratio" disabled>
+            <option value="free">Free</option>
+            <option value="original">Original</option>
+            <option value="1:1">1:1</option>
+            <option value="4:3">4:3</option>
+            <option value="3:4">3:4</option>
+            <option value="3:2">3:2</option>
+            <option value="2:3">2:3</option>
+            <option value="16:9">16:9</option>
+            <option value="9:16">9:16</option>
+          </select>
+        </label>
+        <label class="bar-select zoom-control"><span class="tool-label">Zoom</span>
           <select id="zoom" aria-label="Preview zoom" aria-controls="drop-area" disabled>
             <option value="fit">Fit</option>
             <option value="1">100%</option>
@@ -84,8 +95,8 @@
         </label>
         <span id="size-readout" class="size-readout" role="status" aria-live="polite" hidden></span>
         <div class="workspace-actions" role="group" aria-label="Save crop">
-          <button id="save-toolbar" type="button" class="primary" disabled>Save crop</button>
-          <button id="cancel-toolbar" type="button" hidden>Cancel</button>
+          <button id="save" type="button" class="primary" disabled>Save crop</button>
+          <button id="cancel" type="button" hidden>Cancel</button>
         </div>
       </div>
       <div id="drop-area" class="stage-wrap">
@@ -119,14 +130,23 @@
       </div>
       <div class="workspace-note">
         <div class="workspace-feedback">
+          <div id="turn-confirm" class="inline-confirm" role="group" aria-label="Confirm turn" hidden>
+            <span id="turn-confirm-text"></span>
+            <button id="turn-confirm-yes" type="button" class="primary">Turn anyway</button>
+            <button id="turn-confirm-no" type="button">Keep as is</button>
+          </div>
           <p id="status" role="status" aria-live="polite"></p>
           <p id="retained-note" class="retained-note" hidden><span class="retained-key" aria-hidden="true"></span>The orange striped area may be recoverable from the saved JPEG. Make sure it contains nothing private.</p>
           <p id="pointer-readout" class="pointer-readout" aria-hidden="true"></p>
+          <div id="saved" class="saved-note" role="status" aria-live="polite" hidden>
+            <span id="saved-text"></span>
+            <button id="open-another" type="button">Open another</button>
+          </div>
           <p id="error" role="alert" hidden></p>
         </div>
         <details class="interaction-details">
           <summary>Controls</summary>
-          <p id="interaction-help">Hover to preview a JPEG block boundary. Drag toward the free-edge corner to refine the far corner by pixels; on an unrotated image, that is lower right. Drag inside to move or use a handle to resize. Arrow keys move a focused crop by JPEG blocks. A focused handle moves a constrained edge by blocks or a free edge by pixels; Shift moves 10 steps. Escape cancels a drag. Use Draw new to replace the selection. Scroll over the image to zoom toward the pointer. Use scrollbars to pan, or Fit to see the whole image. On a touch screen, one finger crops; pinch or drag with two fingers to zoom and pan. Shortly after you draw a small crop, the preview zooms toward it.</p>
+          <p id="interaction-help">Hover to preview a JPEG block boundary. Drag toward the free-edge corner to refine the far corner by pixels; on an unrotated image, that is lower right. Drag inside to move or use a handle to resize. Arrow keys move a focused crop by JPEG blocks. A focused handle moves a constrained edge by blocks or a free edge by pixels; Shift moves 10 steps. Escape cancels a drag. Drag outside the crop to replace it. Choose a ratio to lock the shape, and use Undo (Ctrl+Z) to step back. Scroll over the image to zoom toward the pointer. Use scrollbars to pan, or Fit to see the whole image. On a touch screen, one finger crops; pinch or drag with two fingers to zoom and pan. Shortly after you draw a small crop, the preview zooms toward it.</p>
         </details>
       </div>
     </section>

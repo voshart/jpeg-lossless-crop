@@ -6,7 +6,8 @@
   Once an image is loaded, the output-size readout replaces the brand beside
   Save (up to two lines) instead of adding a third toolbar row. The preview no
   longer shrinks when the first size estimate arrives. The "Zoom" text label is
-  hidden; the select keeps its accessible name. Crop tools and zoom are 36px tall.
+  hidden; the selects keep their accessible names. Undo/Redo, ratio and zoom are
+  36px tall.
 - Portrait phones: the controls panel starts collapsed and opens as a bar
   docked below the image (at most 45% of the viewport height, scrollable), so
   the crop stays visible and usable with the controls open. No scrim is shown.

@@ -6,12 +6,13 @@ export function formatSize(bytes) {
   return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(bytes / divisor)} ${unit}`;
 }
 
-export function sizeComparison(original, output) {
-  const difference = Math.abs(original - output);
-  if (!difference) return `${formatSize(output)} output · same size`;
-  const percent = difference / original * 100;
+/** Short readout: "165 KB · 89% smaller". A whole-image save shows only its size. */
+export function sizeSummary(original, output, whole = false) {
+  const size = formatSize(output);
+  if (whole || output === original) return size;
+  const percent = Math.abs(original - output) / original * 100;
   const amount = percent < 1 ? '<1%' : `${Math.round(percent)}%`;
-  return `${formatSize(output)} output · ${formatSize(difference)} ${output < original ? 'smaller' : 'larger'} (${amount})`;
+  return `${size} · ${amount} ${output < original ? 'smaller' : 'larger'}`;
 }
 
 export function createSizeEstimate({ readout, getState }) {
@@ -28,19 +29,23 @@ export function createSizeEstimate({ readout, getState }) {
     readout.hidden = true;
     readout.textContent = '';
     readout.removeAttribute('title');
+    delete readout.dataset.stale;
   }
   function fail(message) {
-    readout.textContent = 'Size estimate unavailable';
+    readout.textContent = 'Size unavailable';
     readout.title = message;
+    delete readout.dataset.stale;
   }
   function schedule() {
     cancel();
     const state = getState();
     if (!state.source || !state.crop || state.busy) return;
-    const { source, crop, keepMetadata } = state;
+    const { source, crop, keepMetadata, whole } = state;
     const token = sequence;
     readout.hidden = false;
-    if (readout.textContent !== 'Estimating size…') readout.textContent = 'Estimating size…';
+    // Keep the last size on screen, dimmed, so the readout does not flicker while measuring.
+    if (readout.textContent && readout.textContent !== 'Size unavailable') readout.dataset.stale = 'true';
+    else readout.textContent = 'Measuring…';
     readout.removeAttribute('title');
     delay = setTimeout(async () => {
       delay = null;
@@ -57,8 +62,10 @@ export function createSizeEstimate({ readout, getState }) {
           settled = true;
           clearTimeout(timeout); timeout = null;
           currentWorker.terminate(); worker = null;
-          if (Number.isSafeInteger(size) && size > 0) readout.textContent = sizeComparison(source.size, size);
-          else fail(message || 'The JPEG engine could not measure this crop.');
+          if (Number.isSafeInteger(size) && size > 0) {
+            readout.textContent = sizeSummary(source.size, size, whole);
+            delete readout.dataset.stale;
+          } else fail(message || 'The JPEG engine could not measure this crop.');
         };
         timeout = setTimeout(() => finish(null, 'The size estimate timed out.'), 60_000);
         currentWorker.onmessage = ({ data }) => finish(data.ok ? data.size : null, data.error);
